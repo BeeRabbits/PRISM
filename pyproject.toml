@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prism"
+version = "0.1.0"
+description = "PRISM: Persistent Resonance Intelligence & Self-Modifying Memory"
+requires-python = ">=3.11"
+dependencies = [
+    "torch",
+    "transformers",
+    "accelerate",
+    "peft",
+    "datasets",
+    "bitsandbytes",
+    "trl",
+    "einops",
+    "sentencepiece",
+    "huggingface_hub",
+    "wandb",
+    "anthropic",
+    "matplotlib",
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "aiosqlite",
+    "python-dotenv",
+    "apscheduler",
+    "rich",
+    "typer",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "httpx"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,34 @@
+# Environment. Never commit secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+.venv/
+venv/
+
+# Model weights (too large for git)
+model/weights/
+
+# Trained adapters (large binaries)
+adapters/current/
+adapters/titans/
+
+# Data / logs
+data/*.db
+data/training_runs.jsonl
+data/benchmarks/
+data/mirror_context.md
+logs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db

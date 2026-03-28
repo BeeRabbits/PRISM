@@ -1,0 +1,31 @@
+# PRISM: Pinned dependencies
+# Install: pip install -r requirements.txt
+# PyTorch must be installed separately first:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+
+transformers==4.46.3
+accelerate>=0.34.0,<1.0
+peft>=0.13.0,<1.0
+datasets>=3.0.0,<4.0
+bitsandbytes>=0.44.0,<0.50
+trl==0.12.2
+einops>=0.8.0
+sentencepiece>=0.2.0
+huggingface_hub>=0.25.0,<1.0
+wandb>=0.18.0
+matplotlib>=3.8.0
+
+fastapi>=0.115.0,<1.0
+uvicorn>=0.32.0,<1.0
+sqlalchemy>=2.0.0,<3.0
+aiosqlite>=0.20.0
+python-dotenv>=1.0.0
+apscheduler>=3.10.0,<4.0
+anthropic>=0.40.0
+rich>=13.0.0
+typer>=0.12.0
+
+# Dev / test
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+httpx>=0.27.0
