@@ -28,21 +28,21 @@ See [MIRROR.md](MIRROR.md) for the full protocol specification.
 
 PRISM's training is modeled on how the human brain consolidates and retrieves memory:
 
-**Spaced Repetition** — Episodes are replayed at Fibonacci intervals (1, 1, 2, 3, 5, 8, 13, 21, 34, 55 training cycles). Memories reviewed at increasing intervals are retained far longer than massed repetition.
+**Spaced Repetition:** Episodes are replayed at Fibonacci intervals (1, 1, 2, 3, 5, 8, 13, 21, 34, 55 training cycles). Memories reviewed at increasing intervals are retained far longer than massed repetition.
 
-**Active Recall** — Before each training run, the model is tested on previously trained episodes. Episodes where recall falls below threshold are re-queued. Testing strengthens retention more than passive re-reading.
+**Active Recall:** Before each training run, the model is tested on previously trained episodes. Episodes where recall falls below threshold are re-queued. Testing strengthens retention more than passive re-reading.
 
-**TMR Dream Consolidation** — Targeted Memory Reactivation: episodes with the highest delta between original and Oracle scores are over-represented in training batches. High-salience memories get extra consolidation passes, mirroring what happens during human sleep.
+**TMR Dream Consolidation:** Targeted Memory Reactivation. Episodes with the highest delta between original and Oracle scores are over-represented in training batches. High-salience memories get extra consolidation passes, mirroring what happens during human sleep.
 
-**Interleaved Training** — Topics are ordered in round-robin rather than sequential blocks. Interleaving causes short-term difficulty but produces better long-term retention and transfer, a well-established finding in human learning research.
+**Interleaved Training:** Topics are ordered in round-robin rather than sequential blocks. Interleaving causes short-term difficulty but produces better long-term retention and transfer, a well-established finding in human learning research.
 
-**Mixed Knowledge (60/30/10 Split)** — Every training batch is composed of three sources to prevent catastrophic forgetting:
+**Mixed Knowledge (60/30/10 Split):** Every training batch is composed of three sources to prevent catastrophic forgetting:
 
 | Proportion | Source |
 |---|---|
-| ~60% | High-fitness episodic memories (user interactions) |
-| ~30% | General knowledge Q&A (preserves world knowledge) |
-| ~10% | Spaced-replay episodes (Fibonacci-scheduled reruns) |
+| 60% | High-fitness episodic memories (user interactions) |
+| 30% | General knowledge Q&A (preserves world knowledge) |
+| 10% | Spaced-replay episodes (Fibonacci-scheduled reruns) |
 
 ### Dream Consolidation
 
@@ -74,10 +74,10 @@ Post-convergence, Cortex Loop increases reasoning depth by duplicating transform
 
 | Component | Speed | Persistence | What it stores |
 |---|---|---|---|
-| **QLoRA adapters** (~50 MB) | Slow | Permanent weight changes | Values, style, preferences, knowledge |
+| **QLoRA adapters** (about 50 MB) | Slow | Permanent weight changes | Values, style, preferences, knowledge |
 | **Titans memory adapter** | Fast | Per-session, evolves via training | In-context patterns, conversation state |
 
-**QLoRA**: The base model (29 GB) is loaded in 4-bit NF4 quantization. Only small adapter matrices are trained, achieving full fine-tuning quality at ~1/4 the memory cost.
+**QLoRA**: The base model (29 GB) is loaded in 4-bit NF4 quantization. Only small adapter matrices are trained, achieving full fine-tuning quality at 1/4 the memory cost.
 
 **Titans adapter**: Standard transformer attention resets each call. The Titans adapter maintains a persistent memory bank across turns within a session, grafted at the embedding layer as a hook. The base model is never modified directly.
 
@@ -103,7 +103,7 @@ RAG is retrieval. You fetch documents and inject them as context. The model does
 
 ## Training Results
 
-Across multiple training cycles on ~2,500 episodes:
+Across multiple training cycles on 2,500+ episodes:
 
 | Run | LoRA Eval Loss | Titans Loss | General Knowledge % |
 |---|---|---|---|
@@ -112,7 +112,7 @@ Across multiple training cycles on ~2,500 episodes:
 | 3 | 0.784 | 0.612 | 9% (571 examples) |
 | 4 (reset) | 0.821 | 0.628 | 9% (571 examples) |
 
-MIRROR delta: 2.145 → 1.900 over training cycles (convergence target: 0.30).
+MIRROR delta: 2.145 to 1.900 over training cycles (convergence target: 0.30).
 
 Early training with only 1% general knowledge caused catastrophic forgetting (model output degraded to Chinese text and gibberish). Expanding to 9% restored coherence. The dataset now contains 2,456 general knowledge entries targeting the full 30% ratio.
 
@@ -132,7 +132,7 @@ bash setup.sh
 cp .env.example .env
 # Edit .env: set HF_TOKEN, ANTHROPIC_API_KEY (for MIRROR + Dream Consolidation)
 
-# Download model (~29 GB)
+# Download model (about 29 GB)
 source .venv/bin/activate
 python scripts/download_model.py
 
