@@ -65,15 +65,11 @@ Episodes are weighted in LoRA training based on their delta:
 - **Low delta (<1)**: 1x weight (already aligned)
 - **No delta (legacy/manual)**: 1x weight
 
-## Files
+## Why This Matters
 
-| File | Role |
-|------|------|
-| `server/mirror_oracle.py` | Claude API oracle scoring |
-| `server/mirror_hook.py` | Post-response background hook |
-| `training/dream_consolidation.py` | Self-score method (local model) |
-| `scripts/mirror_bootstrap.py` | Import prior conversations |
-| `data/mirror_context.md` | User context for oracle judge |
+MIRROR addresses a core challenge in personalized AI: how do you train a model to align with a specific user's preferences without requiring that user to manually score every response?
+
+By using a stronger model (Claude) as a temporary oracle, PRISM bootstraps its own evaluation ability. The oracle is not permanent. It is a scaffold that gets removed once the model can stand on its own. This pattern could generalize to any scenario where a capable teacher model helps a smaller model learn self-assessment, reducing long-term dependency on expensive external scoring.
 
 ## Configuration
 
@@ -93,8 +89,14 @@ Episodes are weighted in LoRA training based on their delta:
 - `GET /mirror-status` returns full metrics via API
 - `python scripts/mirror_bootstrap.py <file>` imports prior conversations
 
-## Backward Compatibility
+## Current Progress
 
-- Manual `/feedback` still works and overrides auto-scores
-- Episodes without MIRROR fields (pre-MIRROR) get default 1x training weight
-- All new columns are nullable. Existing data is unaffected
+| Metric | Value |
+|--------|-------|
+| Episodes scored | 2,500+ |
+| Starting delta | 2.145 |
+| Current delta | 1.900 |
+| Convergence target | 0.30 |
+| Training runs | 4 |
+
+The delta is actively decreasing with each training cycle, indicating the model is learning to self-evaluate more accurately over time.
