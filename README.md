@@ -168,6 +168,34 @@ python scripts/mirror_autopilot.py --turns 500
 
 ---
 
+## Acknowledgments and References
+
+PRISM builds on the work of many researchers and open-source projects:
+
+**Models and Frameworks**
+- [Qwen2.5-14B-Instruct](https://huggingface.co/Qwen/Qwen2.5-14B-Instruct) by Alibaba Qwen Team
+- [Claude](https://www.anthropic.com/) by Anthropic, used as the MIRROR Oracle and for Dream Consolidation
+- [PyTorch](https://pytorch.org/), [Transformers](https://huggingface.co/docs/transformers), [PEFT](https://huggingface.co/docs/peft), and [TRL](https://huggingface.co/docs/trl) by Hugging Face
+- [BitsAndBytes](https://github.com/TimDettmers/bitsandbytes) by Tim Dettmers
+
+**Research Papers**
+- **Titans adapter**: "Titans: Learning to Memorize at Test Time" (Google DeepMind, 2024). PRISM's memory adapter and MaG gating mechanism are based on this work.
+- **LoRA**: "LoRA: Low-Rank Adaptation of Large Language Models" (Hu et al., Microsoft Research, 2021)
+- **QLoRA**: "QLoRA: Efficient Finetuning of Quantized Language Models" (Dettmers et al., 2023)
+- **RYS**: [Repeat Your Self](https://github.com/dnhkng/RYS) by dnhkng. Cortex Loop's layer duplication technique is inspired by this project.
+
+**Neuroscience Foundations**
+- **Spaced Repetition**: Based on the spacing effect (Ebbinghaus, 1885) and modern spaced repetition research (Piotr Wozniak)
+- **Active Recall**: "Test-Enhanced Learning" (Roediger and Karpicke, 2006). Testing strengthens retention more than re-study.
+- **Targeted Memory Reactivation (TMR)**: Research by Rasch et al. (2007) and Oudiette and Paller (2013) on memory reactivation during sleep
+- **Interleaved Practice**: Research by Rohrer and Taylor (2007) and Kornell and Bjork (2008) on the benefits of interleaved over blocked practice
+- **Catastrophic Forgetting**: McCloskey and Cohen (1989). The mixed knowledge dataset is designed to prevent this well-documented failure mode in continual learning.
+
+**Built with**
+- [Claude Code](https://claude.ai/code) by Anthropic
+
+---
+
 ## License
 
 MIT
