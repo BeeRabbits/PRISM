@@ -123,22 +123,25 @@ Early training with only 1% general knowledge caused catastrophic forgetting (mo
 **Requirements:** Ubuntu 22/24, NVIDIA GPU (A100 40GB recommended), CUDA 12.4+
 
 ```bash
-# Clone and setup
+# Clone
 git clone https://github.com/BeeRabbits/PRISM.git
 cd PRISM
-bash setup.sh
+
+# Install dependencies
+pip install -r requirements.txt
 
 # Configure
 cp .env.example .env
 # Edit .env: set HF_TOKEN, ANTHROPIC_API_KEY (for MIRROR + Dream Consolidation)
 
 # Download model (about 29 GB)
-source .venv/bin/activate
 python scripts/download_model.py
 
 # Start
 python main.py
 ```
+
+For a full fresh Ubuntu setup (system packages, venv, CUDA verification), use `bash setup.sh` instead.
 
 ### Chat
 
