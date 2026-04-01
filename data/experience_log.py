@@ -74,6 +74,9 @@ class EpisodeRow(Base):
     next_replay_at = Column(DateTime, nullable=True)
     replay_interval_days = Column(Integer, default=1, nullable=False)
     last_recall_score = Column(Float, nullable=True)
+    # Frustration Detection fields
+    sentiment_tier = Column(String(32), nullable=True)
+    sentiment_patterns = Column(Text, nullable=True)
 
 
 class SemanticMemoryRow(Base):
@@ -90,6 +93,7 @@ class SemanticMemoryRow(Base):
     fitness_score = Column(Float, default=0.6, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     promoted_at = Column(DateTime, nullable=True)
+    last_validated_at = Column(DateTime, nullable=True)
     metadata_ = Column("metadata", Text, default="{}")
 
 
@@ -167,6 +171,11 @@ class ExperienceLogger:
             "ALTER TABLE episodes ADD COLUMN next_replay_at DATETIME",
             "ALTER TABLE episodes ADD COLUMN replay_interval_days INTEGER NOT NULL DEFAULT 1",
             "ALTER TABLE episodes ADD COLUMN last_recall_score REAL",
+            # Frustration Detection columns
+            "ALTER TABLE episodes ADD COLUMN sentiment_tier TEXT",
+            "ALTER TABLE episodes ADD COLUMN sentiment_patterns TEXT",
+            # Memory Validation column
+            "ALTER TABLE semantic_memories ADD COLUMN last_validated_at DATETIME",
         ]
         async with self._engine.begin() as conn:
             for sql in migrations:
@@ -186,16 +195,20 @@ class ExperienceLogger:
         full_prompt: str,
         session_id: str,
         memory_context_used: str = "",
+        sentiment_tier: Optional[str] = None,
+        sentiment_patterns: Optional[str] = None,
     ) -> str:
         """
         Log a new episode and return its UUID string.
 
         Args:
-            user_message:       The raw user input.
-            assistant_response: The model's reply.
-            full_prompt:        The full prompt string sent to the model.
-            session_id:         Session identifier.
+            user_message:        The raw user input.
+            assistant_response:  The model's reply.
+            full_prompt:         The full prompt string sent to the model.
+            session_id:          Session identifier.
             memory_context_used: Any memory context injected into the prompt.
+            sentiment_tier:      Detected frustration tier (MILD/FRUSTRATED/ANGRY).
+            sentiment_patterns:  JSON array of matched frustration pattern names.
 
         Returns:
             episode_id as a string UUID.
@@ -209,6 +222,8 @@ class ExperienceLogger:
             full_prompt=full_prompt,
             memory_context_used=memory_context_used,
             timestamp=datetime.utcnow(),
+            sentiment_tier=sentiment_tier,
+            sentiment_patterns=sentiment_patterns,
         )
         async with self._session_factory() as session:
             session.add(row)

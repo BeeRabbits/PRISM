@@ -148,7 +148,16 @@ def main(
         )
         scheduler.start()
 
-        # 7. Attach to app.state for route access
+        # 7. Idle Monitor (autoDream-inspired idle-time consolidation)
+        if config.IDLE_CONSOLIDATION_ENABLED:
+            from server.idle_monitor import IdleMonitor, set_idle_monitor
+            idle_monitor = IdleMonitor(dream_consolidation=dream_consolidation)
+            set_idle_monitor(idle_monitor)
+            # Start after uvicorn event loop is running
+            idle_monitor.start()
+            logger.info("IdleMonitor ready.")
+
+        # 8. Attach to app.state for route access
         app.state.loader = loader
         app.state.engine = engine
         app.state.scheduler = scheduler

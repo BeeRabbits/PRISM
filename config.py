@@ -133,5 +133,29 @@ MIXED_KNOWLEDGE_RATIO: float = _getfloat("MIXED_KNOWLEDGE_RATIO", 0.30)
 SPACED_REPLAY_RATIO: float = _getfloat("SPACED_REPLAY_RATIO", 0.10)
 MIXED_KNOWLEDGE_PATH: str = _get("MIXED_KNOWLEDGE_PATH", "./data/general")
 
+# Frustration Detection (regex-based, zero API calls)
+FRUSTRATION_DETECTION_ENABLED: bool = _get("FRUSTRATION_DETECTION_ENABLED", "true").lower() in ("true", "1", "yes")
+
+# Idle-time Dream Consolidation
+IDLE_CONSOLIDATION_ENABLED: bool = _get("IDLE_CONSOLIDATION_ENABLED", "true").lower() in ("true", "1", "yes")
+IDLE_CONSOLIDATION_MINUTES: int = _getint("IDLE_CONSOLIDATION_MINUTES", 30)
+IDLE_CONSOLIDATION_COOLDOWN_MINUTES: int = _getint("IDLE_CONSOLIDATION_COOLDOWN_MINUTES", 120)
+
+# Memory Validation and Injection
+MEMORY_INJECTION_ENABLED: bool = _get("MEMORY_INJECTION_ENABLED", "true").lower() in ("true", "1", "yes")
+MEMORY_VALIDATION_MIN_SOURCE_FITNESS: float = _getfloat("MEMORY_VALIDATION_MIN_SOURCE_FITNESS", 0.5)
+MEMORY_VALIDATION_MAX_STALENESS_DAYS: int = _getint("MEMORY_VALIDATION_MAX_STALENESS_DAYS", 30)
+MEMORY_VALIDATION_MIN_CONFIDENCE: float = _getfloat("MEMORY_VALIDATION_MIN_CONFIDENCE", 0.50)
+
+# Instincts System (learned behavioral rules)
+INSTINCTS_ENABLED: bool = _get("INSTINCTS_ENABLED", "true").lower() in ("true", "1", "yes")
+INSTINCTS_MAX_ACTIVE: int = _getint("INSTINCTS_MAX_ACTIVE", 20)
+INSTINCTS_MIN_CONFIDENCE: float = _getfloat("INSTINCTS_MIN_CONFIDENCE", 0.60)
+
+# Context Compaction (session history summarization)
+COMPACTION_ENABLED: bool = _get("COMPACTION_ENABLED", "true").lower() in ("true", "1", "yes")
+COMPACTION_TOKEN_THRESHOLD: int = _getint("COMPACTION_TOKEN_THRESHOLD", 3000)
+COMPACTION_KEEP_RECENT: int = _getint("COMPACTION_KEEP_RECENT", 6)
+
 # User identity (used by autopilot and display, no personal info in code)
 USER_NAME: str = _get("USER_NAME", "User")

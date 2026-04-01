@@ -75,6 +75,25 @@ class PrismInferenceEngine:
         system = system_prompt or _DEFAULT_SYSTEM
         history = conversation_history or []
 
+        # Inject validated semantic memories into system prompt
+        if config.MEMORY_INJECTION_ENABLED:
+            try:
+                from data.semantic_store import get_semantic_store
+                from data.memory_validator import get_memory_validator
+
+                store = get_semantic_store()
+                validator = get_memory_validator()
+
+                confirmed = await store.get_confirmed_semantics(limit=10)
+                if confirmed:
+                    validated = await validator.validate_batch(confirmed)
+                    if validated:
+                        memory_lines = [f"- {m['content']}" for m in validated[:5]]
+                        memory_block = "\n".join(memory_lines)
+                        system = system + "\n\nConfirmed knowledge about this user:\n" + memory_block
+            except Exception as e:
+                logger.debug("Memory injection skipped: %s", e)
+
         # Build messages list in Qwen chat format
         messages: List[dict] = [{"role": "system", "content": system}]
         messages.extend(history)

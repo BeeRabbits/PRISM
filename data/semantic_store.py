@@ -234,6 +234,16 @@ class SemanticStore:
     # Private helpers
     # ------------------------------------------------------------------
 
+    async def update_last_validated(self, semantic_id: str) -> None:
+        """Update the last_validated_at timestamp to now."""
+        async with self._session_factory() as session:
+            await session.execute(
+                update(SemanticMemoryRow)
+                .where(SemanticMemoryRow.id == semantic_id)
+                .values(last_validated_at=datetime.utcnow())
+            )
+            await session.commit()
+
     @staticmethod
     def _row_to_dict(row: SemanticMemoryRow) -> dict:
         return {
@@ -248,6 +258,7 @@ class SemanticStore:
             "fitness_score": row.fitness_score,
             "created_at": row.created_at,
             "promoted_at": row.promoted_at,
+            "last_validated_at": getattr(row, "last_validated_at", None),
             "metadata": json.loads(row.metadata_ or "{}"),
         }
 
