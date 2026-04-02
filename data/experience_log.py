@@ -147,6 +147,16 @@ class ExperienceLogger:
             echo=False,
             connect_args={"timeout": 30},  # wait up to 30s for DB lock
         )
+
+        # Set WAL mode and busy timeout on every new connection
+        from sqlalchemy import event
+        @event.listens_for(self._engine.sync_engine, "connect")
+        def _set_sqlite_pragma(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.close()
+
         self._session_factory = async_sessionmaker(
             self._engine, expire_on_commit=False, class_=AsyncSession
         )
@@ -155,9 +165,6 @@ class ExperienceLogger:
         """Create tables if they don't exist, then apply incremental migrations."""
         async with self._engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            # Enable WAL mode for concurrent read/write support
-            await conn.execute(text("PRAGMA journal_mode=WAL"))
-            await conn.execute(text("PRAGMA busy_timeout=30000"))
         await self._migrate_schema()
         logger.info("ExperienceLogger initialised at %s", self._db_url)
 
