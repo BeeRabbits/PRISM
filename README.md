@@ -211,4 +211,4 @@ PRISM builds on the work of many researchers and open-source projects:
 
 ## License
 
-MIT
+[Business Source License 1.1](LICENSE) - Free for non-commercial and educational use. Converts to Apache 2.0 on 2030-04-01.
