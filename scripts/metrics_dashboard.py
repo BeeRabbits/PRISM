@@ -72,11 +72,12 @@ def parse_timestamp(ts: str) -> datetime:
 
 def plot_loss_curves(logs: list[dict], output_dir: Path, show: bool = False) -> None:
     """Plot LoRA train/eval loss and Titans loss over training runs."""
-    dates = []
+    run_labels = []
     train_losses = []
     eval_losses = []
     titans_losses = []
 
+    run_num = 0
     for log in logs:
         lora = log.get("lora") or {}
         titans = log.get("titans") or {}
@@ -92,32 +93,40 @@ def plot_loss_curves(logs: list[dict], output_dir: Path, show: bool = False) -> 
         if math.isnan(eval_loss) or math.isnan(train_loss):
             continue
 
+        run_num += 1
         ts = parse_timestamp(log.get("started_at", ""))
-        dates.append(ts)
+        run_labels.append(f"Run {run_num}\n{ts.strftime('%m/%d')}")
         train_losses.append(train_loss)
         eval_losses.append(eval_loss)
         titans_losses.append(titans.get("avg_loss") if titans.get("status") == "completed" else None)
 
-    if not dates:
+    if not run_labels:
         print("  No completed training runs found. Skipping loss curves.")
         return
 
+    x = list(range(len(run_labels)))
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
-    ax1.plot(dates, train_losses, "o-", color=COLORS["lora_loss"], label="LoRA Train Loss", linewidth=2, markersize=6)
-    ax1.plot(dates, eval_losses, "s-", color=COLORS["eval_loss"], label="LoRA Eval Loss", linewidth=2, markersize=6)
+    ax1.plot(x, train_losses, "o-", color=COLORS["lora_loss"], label="LoRA Train Loss", linewidth=2, markersize=8)
+    ax1.plot(x, eval_losses, "s-", color=COLORS["eval_loss"], label="LoRA Eval Loss", linewidth=2, markersize=8)
 
-    titans_valid = [(d, t) for d, t in zip(dates, titans_losses) if t is not None]
+    titans_valid = [(i, t) for i, t in zip(x, titans_losses) if t is not None]
     if titans_valid:
-        td, tl = zip(*titans_valid)
-        ax1.plot(td, tl, "^-", color=COLORS["titans_loss"], label="Titans Avg Loss", linewidth=2, markersize=6)
+        ti, tl = zip(*titans_valid)
+        ax1.plot(ti, tl, "^-", color=COLORS["titans_loss"], label="Titans Avg Loss", linewidth=2, markersize=8)
 
-    ax1.set_xlabel("Training Run Date", fontsize=12)
+    # Annotate each eval loss point
+    for i, val in enumerate(eval_losses):
+        ax1.annotate(f"{val:.4f}", (x[i], val), textcoords="offset points",
+                     xytext=(0, 10), ha="center", fontsize=9, color=COLORS["eval_loss"])
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(run_labels, fontsize=10)
+    ax1.set_xlabel("Training Run", fontsize=12)
     ax1.set_ylabel("Loss", fontsize=12)
     ax1.set_title("PRISM Training Loss Over Time", fontsize=14, fontweight="bold")
     ax1.legend(loc="upper right", fontsize=10)
     ax1.grid(True, alpha=0.3)
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
 
     plt.tight_layout()
     if show:
@@ -131,10 +140,11 @@ def plot_loss_curves(logs: list[dict], output_dir: Path, show: bool = False) -> 
 
 def plot_delta_convergence(logs: list[dict], output_dir: Path, show: bool = False) -> None:
     """Plot MIRROR delta convergence over time."""
-    dates = []
+    run_labels = []
     deltas = []
     episode_counts = []
 
+    run_num = 0
     for log in logs:
         mirror = log.get("mirror") or {}
         lora = log.get("lora") or {}
@@ -142,52 +152,48 @@ def plot_delta_convergence(logs: list[dict], output_dir: Path, show: bool = Fals
         if avg_delta is None:
             continue
 
+        run_num += 1
         ts = parse_timestamp(log.get("started_at", ""))
-        dates.append(ts)
+        run_labels.append(f"Run {run_num}\n{ts.strftime('%m/%d')}")
         deltas.append(avg_delta)
         episode_counts.append(mirror.get("auto_scored_count") or lora.get("episodes_used", 0))
 
-    if not dates:
+    if not run_labels:
         print("  No MIRROR delta data found. Skipping convergence plot.")
         return
 
+    x = list(range(len(run_labels)))
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
     # Delta line
-    ax1.plot(dates, deltas, "o-", color=COLORS["delta"], linewidth=2.5, markersize=8, label="Rolling Avg Delta")
+    ax1.plot(x, deltas, "o-", color=COLORS["delta"], linewidth=2.5, markersize=8, label="Rolling Avg Delta")
 
     # Convergence threshold
     ax1.axhline(y=0.30, color=COLORS["convergence_line"], linestyle="--", linewidth=1.5, alpha=0.7, label="Convergence Threshold (0.30)")
 
     # Fill between current delta and threshold
-    ax1.fill_between(dates, deltas, 0.30, alpha=0.1, color=COLORS["delta"])
+    ax1.fill_between(x, deltas, 0.30, alpha=0.1, color=COLORS["delta"])
 
-    ax1.set_xlabel("Training Run Date", fontsize=12)
+    # Annotate each delta value
+    for i, val in enumerate(deltas):
+        ax1.annotate(f"{val:.3f}", (x[i], val), textcoords="offset points",
+                     xytext=(0, 12), ha="center", fontsize=10, fontweight="bold",
+                     color=COLORS["delta"])
+
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(run_labels, fontsize=10)
+    ax1.set_xlabel("Training Run", fontsize=12)
     ax1.set_ylabel("MIRROR Delta", fontsize=12)
     ax1.set_title("MIRROR Delta Convergence", fontsize=14, fontweight="bold")
     ax1.legend(loc="upper right", fontsize=10)
     ax1.grid(True, alpha=0.3)
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
+    ax1.set_ylim(0, max(deltas) * 1.3)
 
     # Add episode count as secondary axis
     ax2 = ax1.twinx()
-    ax2.bar(dates, episode_counts, alpha=0.15, color=COLORS["episodes"], width=0.02, label="Episode Count")
+    ax2.bar(x, episode_counts, alpha=0.15, color=COLORS["episodes"], width=0.5, label="Episode Count")
     ax2.set_ylabel("Total Episodes", fontsize=12, color=COLORS["episodes"])
     ax2.tick_params(axis="y", labelcolor=COLORS["episodes"])
-
-    # Annotate latest delta
-    if deltas:
-        latest_delta = deltas[-1]
-        ax1.annotate(
-            f"Current: {latest_delta:.3f}",
-            xy=(dates[-1], latest_delta),
-            xytext=(10, 15),
-            textcoords="offset points",
-            fontsize=11,
-            fontweight="bold",
-            color=COLORS["delta"],
-            arrowprops=dict(arrowstyle="->", color=COLORS["delta"]),
-        )
 
     plt.tight_layout()
     if show:
@@ -201,9 +207,10 @@ def plot_delta_convergence(logs: list[dict], output_dir: Path, show: bool = Fals
 
 def plot_episodes_over_time(logs: list[dict], output_dir: Path, show: bool = False) -> None:
     """Plot episode count growth over training runs."""
-    dates = []
+    run_labels = []
     counts = []
 
+    run_num = 0
     for log in logs:
         lora = log.get("lora") or {}
         mirror = log.get("mirror") or {}
@@ -211,36 +218,33 @@ def plot_episodes_over_time(logs: list[dict], output_dir: Path, show: bool = Fal
         if count is None:
             continue
 
+        run_num += 1
         ts = parse_timestamp(log.get("started_at", ""))
-        dates.append(ts)
+        run_labels.append(f"Run {run_num}\n{ts.strftime('%m/%d')}")
         counts.append(count)
 
-    if not dates:
+    if not run_labels:
         print("  No episode data found. Skipping episode growth plot.")
         return
 
+    x = list(range(len(run_labels)))
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    ax.fill_between(dates, counts, alpha=0.3, color=COLORS["episodes"])
-    ax.plot(dates, counts, "o-", color=COLORS["episodes"], linewidth=2.5, markersize=8)
+    ax.fill_between(x, counts, alpha=0.3, color=COLORS["episodes"])
+    ax.plot(x, counts, "o-", color=COLORS["episodes"], linewidth=2.5, markersize=8)
 
-    ax.set_xlabel("Date", fontsize=12)
+    # Annotate each point
+    for i, val in enumerate(counts):
+        ax.annotate(f"{val:,}", (x[i], val), textcoords="offset points",
+                    xytext=(0, 10), ha="center", fontsize=10, fontweight="bold",
+                    color=COLORS["episodes"])
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(run_labels, fontsize=10)
+    ax.set_xlabel("Training Run", fontsize=12)
     ax.set_ylabel("Total Episodes", fontsize=12)
     ax.set_title("PRISM Episode Growth", fontsize=14, fontweight="bold")
     ax.grid(True, alpha=0.3)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
-
-    if counts:
-        ax.annotate(
-            f"{counts[-1]:,} episodes",
-            xy=(dates[-1], counts[-1]),
-            xytext=(10, 15),
-            textcoords="offset points",
-            fontsize=11,
-            fontweight="bold",
-            color=COLORS["episodes"],
-            arrowprops=dict(arrowstyle="->", color=COLORS["episodes"]),
-        )
 
     plt.tight_layout()
     if show:
@@ -358,37 +362,49 @@ def plot_training_summary(logs: list[dict], output_dir: Path, show: bool = False
 
 def plot_consolidation_history(logs: list[dict], output_dir: Path, show: bool = False) -> None:
     """Plot dream consolidation semantics created over time."""
-    dates = []
+    run_labels = []
     created = []
     promoted = []
+    clusters_found = []
 
+    run_num = 0
     for log in logs:
         cons = log.get("consolidation")
         if not cons or cons.get("clusters_found") is None:
             continue
 
+        run_num += 1
         ts = parse_timestamp(log.get("started_at", ""))
-        dates.append(ts)
+        run_labels.append(f"Run {run_num}\n{ts.strftime('%m/%d')}")
         created.append(cons.get("semantics_created", 0))
         promoted.append(cons.get("semantics_promoted", 0))
+        clusters_found.append(cons.get("clusters_found", 0))
 
-    if not dates:
+    if not run_labels:
         print("  No consolidation data found. Skipping.")
         return
 
+    x = list(range(len(run_labels)))
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    ax.bar(dates, created, width=0.02, color=COLORS["semantic"], alpha=0.8, label="Semantics Created")
+    ax.bar(x, clusters_found, width=0.5, color=COLORS["delta"], alpha=0.3, label="Clusters Found")
+    ax.bar(x, created, width=0.5, color=COLORS["semantic"], alpha=0.8, label="Semantics Created")
     if any(p > 0 for p in promoted):
-        ax.bar(dates, promoted, width=0.02, color=COLORS["replay"], alpha=0.8,
+        ax.bar(x, promoted, width=0.5, color=COLORS["replay"], alpha=0.8,
                bottom=created, label="Semantics Promoted")
 
-    ax.set_xlabel("Date", fontsize=12)
+    # Annotate clusters found
+    for i, val in enumerate(clusters_found):
+        ax.annotate(f"{val} clusters", (x[i], val), textcoords="offset points",
+                    xytext=(0, 5), ha="center", fontsize=9, color=COLORS["delta"])
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(run_labels, fontsize=10)
+    ax.set_xlabel("Training Run", fontsize=12)
     ax.set_ylabel("Count", fontsize=12)
-    ax.set_title("Dream Consolidation: Semantic Memories Created", fontsize=14, fontweight="bold")
+    ax.set_title("Dream Consolidation: Clusters and Semantic Memories", fontsize=14, fontweight="bold")
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3, axis="y")
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
 
     plt.tight_layout()
     if show:
