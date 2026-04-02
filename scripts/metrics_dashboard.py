@@ -259,7 +259,9 @@ def plot_training_summary(logs: list[dict], output_dir: Path, show: bool = False
         print("  No completed runs. Skipping summary.")
         return
 
-    latest = completed[-1]
+    # Use the most recent run with a valid eval_loss
+    valid = [l for l in completed if l.get("lora", {}).get("eval_loss") is not None]
+    latest = valid[-1] if valid else completed[-1]
     lora = latest.get("lora", {})
     titans = latest.get("titans", {})
     mirror = latest.get("mirror", {})
@@ -287,8 +289,10 @@ def plot_training_summary(logs: list[dict], output_dir: Path, show: bool = False
 
     # Metrics in a grid layout
     metrics = []
-    metrics.append(("LoRA Train Loss", f"{lora.get('train_loss', 0):.4f}"))
-    metrics.append(("LoRA Eval Loss", f"{lora.get('eval_loss', 0):.4f}"))
+    train_loss = lora.get("train_loss")
+    eval_loss = lora.get("eval_loss")
+    metrics.append(("LoRA Train Loss", f"{train_loss:.4f}" if train_loss is not None else "N/A"))
+    metrics.append(("LoRA Eval Loss", f"{eval_loss:.4f}" if eval_loss is not None else "N/A"))
     if eval_improvement:
         direction = "better" if eval_improvement > 0 else "worse"
         metrics.append(("Eval Change", f"{abs(eval_improvement):.4f} {direction}"))
