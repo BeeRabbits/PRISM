@@ -48,7 +48,11 @@ class SemanticStore:
         if self._db_url.startswith("sqlite"):
             db_path_str = self._db_url.split("///")[-1]
             Path(db_path_str).parent.mkdir(parents=True, exist_ok=True)
-        self._engine = create_async_engine(self._db_url, echo=False)
+        self._engine = create_async_engine(
+            self._db_url,
+            echo=False,
+            connect_args={"timeout": 30},
+        )
         self._session_factory = async_sessionmaker(
             self._engine, expire_on_commit=False, class_=AsyncSession
         )
