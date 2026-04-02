@@ -166,7 +166,7 @@ class DatasetBuilder:
 
         episodes = await self._log.get_episodes_with_delta(
             min_score=self._min_fitness,
-            limit=3_000,
+            limit=2_000,
         )
 
         n = len(episodes)
@@ -333,7 +333,7 @@ class DatasetBuilder:
         """Return IDs of episodes that would be selected for the next training run."""
         episodes = await self._log.get_high_fitness_episodes(
             min_score=self._min_fitness,
-            limit=3_000,
+            limit=2_000,
         )
         return [ep["id"] for ep in episodes]
 
