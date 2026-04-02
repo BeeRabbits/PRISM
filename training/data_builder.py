@@ -212,6 +212,14 @@ class DatasetBuilder:
         #   10% spaced replay
         # -----------------------------------------------------------
         personal_items = list(items)  # snapshot personal episodes
+        # Cap personal items to prevent OOM from delta-weighted inflation
+        _MAX_PERSONAL = 2_500
+        if len(personal_items) > _MAX_PERSONAL:
+            random.shuffle(personal_items)
+            personal_items = personal_items[:_MAX_PERSONAL]
+            items = list(personal_items)
+            logger.info("Capped personal episodes at %d (delta weighting inflated to %d).",
+                        _MAX_PERSONAL, len(items))
         personal_target = len(personal_items)
 
         # Calculate target counts from the 60/30/10 ratio
