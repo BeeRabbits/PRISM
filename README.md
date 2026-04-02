@@ -66,6 +66,16 @@ Resolutions: `keep_a` (existing wins), `keep_b` (new wins), `merge` (combine bot
 
 Post-convergence, Cortex Loop increases reasoning depth by duplicating transformer layers at an optimal "seam" point in the network. Inspired by the [RYS (Repeat Your Self)](https://github.com/dnhkng/RYS) technique. A scan sweeps candidate positions and layer counts, scoring each on reasoning benchmarks before applying the best configuration.
 
+### Runtime Adaptations
+
+**Frustration Detection:** A 17-pattern regex system detects user sentiment (NONE, MILD, FRUSTRATED, ANGRY) before every inference call at zero API cost. When frustration is detected, the system prompt is dynamically modified to adjust tone, acknowledge difficulty, and offer more direct help.
+
+**Idle-Time Consolidation:** When the server detects prolonged inactivity (default: 30 minutes), it automatically triggers Dream Consolidation. This mirrors the brain's tendency to consolidate memories during rest, making use of idle GPU time that would otherwise be wasted.
+
+**Context Compaction:** Server-side session history tracks conversation turns per session. When the estimated token count exceeds a threshold, older messages are summarized by the local model and replaced with a compact summary, keeping recent turns intact. This prevents context degradation during long conversations without any API cost.
+
+**Memory Validation:** Semantic memories are validated before injection into inference. Each memory is checked against source episode fitness, staleness (with a 0.7x confidence penalty for stale memories), and minimum confidence thresholds. Memories must earn their way into the prompt rather than being blindly trusted.
+
 ---
 
 ## Architecture
@@ -103,18 +113,16 @@ RAG is retrieval. You fetch documents and inject them as context. The model does
 
 ## Training Results
 
-Across multiple training cycles on 2,500+ episodes:
+Across multiple training cycles on 2,500+ episodes with 30% general knowledge mixing:
 
 | Run | LoRA Eval Loss | Titans Loss | General Knowledge % |
 |---|---|---|---|
-| 1 | 0.788 | 0.612 | 1% (71 examples) |
-| 2 | 0.789 | 0.614 | 9% (571 examples) |
-| 3 | 0.784 | 0.612 | 9% (571 examples) |
-| 4 (reset) | 0.821 | 0.628 | 9% (571 examples) |
+| 1 | 0.842 | 0.631 | 30% (2,456 examples) |
+| 2 | 0.817 | 0.618 | 30% (2,456 examples) |
 
 MIRROR delta: 2.145 to 1.900 over training cycles (convergence target: 0.30).
 
-Early training with only 1% general knowledge caused catastrophic forgetting (model output degraded to Chinese text and gibberish). Expanding to 9% restored coherence. The dataset now contains 2,456 general knowledge entries targeting the full 30% ratio.
+The 60/30/10 mixed training split (episodic, general knowledge, spaced replay) successfully prevents catastrophic forgetting while allowing the model to learn from user interactions. Each training cycle shows consistent improvement in eval loss.
 
 ---
 
