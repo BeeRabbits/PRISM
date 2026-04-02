@@ -22,7 +22,7 @@
     "status": "completed",
     "episodes_used": 2512,
     "train_loss": 1.01903149165589,
-    "eval_loss": NaN,
+    "eval_loss": null,
     "adapter_path": "./adapters/current",
     "mirror_avg_delta": 2.1028,
     "completed_at": "2026-04-01T22:29:16.558265"

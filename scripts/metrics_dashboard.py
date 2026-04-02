@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -82,10 +83,19 @@ def plot_loss_curves(logs: list[dict], output_dir: Path, show: bool = False) -> 
         if lora.get("status") != "completed":
             continue
 
+        # Skip runs with NaN or missing eval loss
+        eval_loss = lora.get("eval_loss")
+        train_loss = lora.get("train_loss")
+        if eval_loss is None or train_loss is None:
+            continue
+        # Handle NaN (JSON NaN gets parsed as float nan)
+        if math.isnan(eval_loss) or math.isnan(train_loss):
+            continue
+
         ts = parse_timestamp(log.get("started_at", ""))
         dates.append(ts)
-        train_losses.append(lora.get("train_loss"))
-        eval_losses.append(lora.get("eval_loss"))
+        train_losses.append(train_loss)
+        eval_losses.append(eval_loss)
         titans_losses.append(titans.get("avg_loss") if titans.get("status") == "completed" else None)
 
     if not dates:

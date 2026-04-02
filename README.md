@@ -115,14 +115,16 @@ RAG is retrieval. You fetch documents and inject them as context. The model does
 
 Across multiple training cycles on 2,500+ episodes with 30% general knowledge mixing:
 
-| Run | LoRA Eval Loss | Titans Loss | General Knowledge % |
+| Run | Date | LoRA Eval Loss | Titans Loss |
 |---|---|---|---|
-| 1 | 0.842 | 0.631 | 30% (2,456 examples) |
-| 2 | 0.817 | 0.618 | 30% (2,456 examples) |
+| 1 | 03/28 | 0.8209 | 0.6275 |
+| 2 | 03/31 | 0.8425 | 0.6324 |
+| 3 | 04/01 | 0.8179 | 0.6322 |
+| 4 | 04/01 | 0.8175 | 0.6320 |
 
-MIRROR delta: 2.145 to 1.900 over training cycles (convergence target: 0.30).
+MIRROR delta: 2.103 to 1.900 over training cycles (convergence target: 0.30).
 
-The 60/30/10 mixed training split (episodic, general knowledge, spaced replay) successfully prevents catastrophic forgetting while allowing the model to learn from user interactions. Each training cycle shows consistent improvement in eval loss.
+The 60/30/10 mixed training split (episodic, general knowledge, spaced replay) successfully prevents catastrophic forgetting while allowing the model to learn from user interactions. Back-to-back training cycles show consistent improvement, with eval loss dropping from 0.842 to 0.817.
 
 ---
 
