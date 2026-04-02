@@ -17,6 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import torch
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -294,6 +296,10 @@ class TrainingScheduler:
                         logger.exception("Spaced replay init failed. non-fatal.")
 
             if self._titans is not None:
+                # Free GPU memory from LoRA training before Titans starts
+                import gc
+                gc.collect()
+                torch.cuda.empty_cache()
                 logger.info("=== Titans adapter training start ===")
                 titans_result = self._titans.train()
                 nightly_report["titans"] = titans_result

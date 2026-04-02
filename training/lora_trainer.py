@@ -12,6 +12,7 @@ Responsibilities:
 
 from __future__ import annotations
 
+import gc
 import json
 import logging
 import threading
@@ -153,6 +154,7 @@ class LoRAContinualTrainer:
                     effective_batch,
                     halved,
                 )
+                gc.collect()
                 torch.cuda.empty_cache()
                 return self._do_train(dataset, halved)
             raise
@@ -161,10 +163,16 @@ class LoRAContinualTrainer:
         """Inner training call. builds LoRA config and runs SFTTrainer."""
         from peft import PeftModel
 
-        # If model is already wrapped in PeftModel, unwrap to apply a fresh config
+        # Properly unload any existing PEFT adapter. Just accessing
+        # base_model.base_model.model does NOT remove LoRA layers from
+        # submodules, causing get_peft_model() to stack adapters and OOM.
         base_model = self.model
         if isinstance(base_model, PeftModel):
-            base_model = base_model.base_model.model
+            logger.info("Unloading existing PEFT adapter before training...")
+            base_model = base_model.unload()
+            self.model = base_model
+            gc.collect()
+            torch.cuda.empty_cache()
 
         # Cortex Loop Seam Layer Targeting:
         # Seam layers are where Cortex Loop creates an architectural discontinuity.
@@ -212,12 +220,14 @@ class LoRAContinualTrainer:
             optim="adamw_8bit",
             save_strategy="epoch",
             eval_strategy="epoch",
-            load_best_model_at_end=True,
+            load_best_model_at_end=False,
             report_to="wandb" if config.WANDB_API_KEY else "none",
             run_name=f"prism_lora_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
             max_seq_length=config.MAX_SEQ_LENGTH,
             dataset_text_field="text",
             packing=True,
+            gradient_checkpointing=True,
+            gradient_checkpointing_kwargs={"use_reentrant": False},
         )
 
         trainer = SFTTrainer(
@@ -227,12 +237,32 @@ class LoRAContinualTrainer:
             args=sft_config,
         )
 
-        train_result = trainer.train()
-        eval_result = trainer.evaluate()
+        try:
+            train_result = trainer.train()
+            eval_result = trainer.evaluate()
+        except Exception:
+            # On failure (OOM etc), unload the adapter we just applied
+            # so the model is clean for a retry. Without this, the next
+            # call to get_peft_model() stacks a SECOND adapter on top.
+            logger.warning("Training failed. Unloading adapter to prevent stacking...")
+            try:
+                clean = peft_model.unload()
+                self.model = clean
+            except Exception:
+                pass
+            del trainer
+            gc.collect()
+            torch.cuda.empty_cache()
+            raise
 
         # Save adapter
         trainer.save_model(str(adapter_out))
         logger.info("LoRA adapter saved to %s", adapter_out)
+
+        # Clean up trainer internals (optimizer states, grad buffers)
+        del trainer
+        gc.collect()
+        torch.cuda.empty_cache()
 
         # Update the live model reference to the new PEFT model
         self.model = peft_model

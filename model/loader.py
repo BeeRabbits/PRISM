@@ -200,9 +200,9 @@ class ModelLoader:
 
         logger.info("Attaching LoRA adapter from %s", adapter_path)
 
-        # If model is already wrapped in PeftModel, reload the adapter
+        # If model is already wrapped in PeftModel, properly unload first
         if isinstance(self.model, PeftModel):
-            self.model = self.model.base_model.model  # unwrap first
+            self.model = self.model.unload()
 
         self.model = PeftModel.from_pretrained(
             self.model,
