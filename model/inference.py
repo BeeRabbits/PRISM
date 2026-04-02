@@ -151,6 +151,14 @@ class PrismInferenceEngine:
         new_tokens = output_ids[0][input_ids.shape[1]:]
         response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
+        # Fix tokenizer artifacts: underscores replacing apostrophes in contractions
+        import re
+        response = re.sub(
+            r"(\w)_([tsmdl]l?|re|ve)\b",
+            r"\1'\2",
+            response,
+        )
+
         # Update session memory if adapter ran
         if updated_memory_container[0] is not None:
             await self.memory_manager.update(session_id, updated_memory_container[0])
