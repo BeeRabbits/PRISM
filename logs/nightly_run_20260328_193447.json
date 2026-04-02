@@ -1,0 +1,49 @@
+{
+  "started_at": "2026-03-28T18:29:36.698053",
+  "active_recall": {
+    "status": "skipped",
+    "reason": "no_trained_episodes"
+  },
+  "consolidation": {
+    "clusters_found": 29,
+    "clusters_skipped_low_confidence": 0,
+    "clusters_skipped_too_varied": 29,
+    "semantics_created": 0,
+    "semantics_promoted": 0,
+    "semantics_pruned": 0,
+    "tmr_salient_count": 429,
+    "tmr_reactivations": 0,
+    "duration_seconds": 53.68,
+    "ran_at": "2026-03-28T18:29:36.749592"
+  },
+  "lora": {
+    "run_id": "run_20260328_183030",
+    "started_at": "2026-03-28T18:30:30.427484",
+    "status": "completed",
+    "episodes_used": 2512,
+    "train_loss": 0.9313156588094218,
+    "eval_loss": 0.8209277987480164,
+    "adapter_path": "./adapters/current",
+    "mirror_avg_delta": 2.1028,
+    "completed_at": "2026-03-28T19:30:00.986278"
+  },
+  "titans": {
+    "status": "completed",
+    "steps": 500,
+    "avg_loss": 0.6275368037819863,
+    "checkpoint": "adapters/titans/titans_adapter.pt",
+    "started_at": "2026-03-28T19:30:04.729648",
+    "completed_at": "2026-03-28T19:34:47.357137"
+  },
+  "spaced_replay": {
+    "episodes_scheduled": 0
+  },
+  "hot_swap": true,
+  "completed_at": "2026-03-28T19:34:47.553024",
+  "mirror": {
+    "auto_scored_count": 2509,
+    "oracle_calls": 2508,
+    "rolling_avg_delta": 1.9,
+    "delta_sample_size": 50
+  }
+}
