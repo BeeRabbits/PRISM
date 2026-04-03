@@ -264,8 +264,16 @@ class LoRAContinualTrainer:
         gc.collect()
         torch.cuda.empty_cache()
 
-        # Update the live model reference to the new PEFT model
-        self.model = peft_model
+        # Unload adapter from the base model so it's clean for hot-swap.
+        # get_peft_model() modifies the base model in-place (injects LoRA layers
+        # and adds peft_config). If we leave this dirty state, hot_swap_lora()
+        # will stack a second adapter on top, causing Chinese/garbage output.
+        clean_base = peft_model.unload()
+        if hasattr(clean_base, "peft_config"):
+            delattr(clean_base, "peft_config")
+        self.model = clean_base
+        gc.collect()
+        torch.cuda.empty_cache()
 
         result = {
             "train_loss": train_result.training_loss,

@@ -204,6 +204,12 @@ class ModelLoader:
         if isinstance(self.model, PeftModel):
             self.model = self.model.unload()
 
+        # Clean leftover peft_config from training (get_peft_model modifies
+        # the base model in-place). Without this, from_pretrained stacks
+        # a second adapter, producing Chinese/garbage output.
+        if hasattr(self.model, "peft_config"):
+            delattr(self.model, "peft_config")
+
         self.model = PeftModel.from_pretrained(
             self.model,
             str(adapter_path),
