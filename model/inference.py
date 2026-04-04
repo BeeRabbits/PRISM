@@ -154,7 +154,7 @@ class PrismInferenceEngine:
         # Fix tokenizer artifacts: underscores replacing apostrophes in contractions
         import re
         response = re.sub(
-            r"(\w)_([tsmdl]l?|re|ve)\b",
+            r"(\w)_(t|s|d|m|ll|re|ve)\b",
             r"\1'\2",
             response,
         )
