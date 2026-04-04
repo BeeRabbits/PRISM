@@ -52,7 +52,7 @@ LORA_RANK: int = _getint("LORA_RANK", 16)
 LORA_ALPHA: int = _getint("LORA_ALPHA", 32)
 LORA_DROPOUT: float = _getfloat("LORA_DROPOUT", 0.05)
 LORA_TARGET_MODULES: list[str] = _get(
-    "LORA_TARGET_MODULES", "q_proj,k_proj,v_proj,o_proj"
+    "LORA_TARGET_MODULES", "q_proj,v_proj"
 ).split(",")
 
 # Titans
@@ -71,7 +71,7 @@ TRAINING_CRON: str = _get("TRAINING_CRON", "0 3 * * *")
 MAX_SEQ_LENGTH: int = _getint("MAX_SEQ_LENGTH", 4096)
 BATCH_SIZE: int = _getint("BATCH_SIZE", 2)
 GRAD_ACCUM_STEPS: int = _getint("GRAD_ACCUM_STEPS", 4)
-LEARNING_RATE: float = _getfloat("LEARNING_RATE", 2e-4)
+LEARNING_RATE: float = _getfloat("LEARNING_RATE", 5e-5)
 WARMUP_RATIO: float = _getfloat("WARMUP_RATIO", 0.03)
 NUM_EPOCHS: int = _getint("NUM_EPOCHS", 1)
 
