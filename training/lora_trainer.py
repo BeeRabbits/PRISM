@@ -174,6 +174,12 @@ class LoRAContinualTrainer:
             gc.collect()
             torch.cuda.empty_cache()
 
+        # Remove leftover peft_config so get_peft_model() doesn't think
+        # there's already an adapter attached (causes "modify a model with
+        # PEFT for a second time" warning and potential stacking issues).
+        if hasattr(base_model, "peft_config"):
+            delattr(base_model, "peft_config")
+
         # Cortex Loop Seam Layer Targeting:
         # Seam layers are where Cortex Loop creates an architectural discontinuity.
         # The model was never trained to accept this layer transition.
