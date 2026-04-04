@@ -152,9 +152,10 @@ class PrismInferenceEngine:
         response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
         # Fix tokenizer artifacts: underscores replacing apostrophes in contractions
+        # Handle both plain (_) and markdown-escaped (\_) underscores
         import re
         response = re.sub(
-            r"(\w)_(t|s|d|m|ll|re|ve)\b",
+            r"(\w)\\?_(t|s|d|m|ll|re|ve)\b",
             r"\1'\2",
             response,
         )
