@@ -178,7 +178,7 @@ class EvalRunner:
 
         results = []
         for tc in cases:
-            response = await self._generate_response(tc.prompt)
+            response = await self._generate_response(tc.prompt, category=tc.category)
             checks_passed = {}
             for check in tc.checks:
                 checks_passed[check] = run_check(check, response)
@@ -298,9 +298,28 @@ class EvalRunner:
     # Private helpers
     # ------------------------------------------------------------------
 
-    async def _generate_response(self, prompt: str) -> str:
-        """Generate a response for a test prompt (direct model call, no memory injection)."""
+    async def _generate_response(self, prompt: str, category: str = "general") -> str:
+        """Generate a response for a test prompt.
+
+        For personal tests, injects KG facts to test the full retrieval pipeline.
+        For general tests, uses raw model output to test base capability.
+        """
         system = "You are PRISM, a persistent intelligent assistant."
+
+        # Personal tests should include KG injection — that's how PRISM answers
+        if category == "personal" and config.MEMORY_INJECTION_ENABLED:
+            try:
+                from data.knowledge_graph import get_knowledge_graph
+                kg = get_knowledge_graph()
+                entities = await kg.extract_entities_from_text(prompt)
+                if entities:
+                    triples = await kg.query_subgraph(entities, hops=2, top_k=25)
+                    if triples:
+                        graph_block = kg.format_for_injection(triples)
+                        system = system + "\n\n" + graph_block
+            except Exception as e:
+                logger.debug("KG injection skipped in eval: %s", e)
+
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": prompt},
