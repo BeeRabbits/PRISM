@@ -583,13 +583,15 @@ class ExperienceLogger:
     async def get_consolidation_candidates(
         self,
         min_fitness: float = 0.6,
-        hours_old: int = 48,
+        hours_old: int = None,
         limit: int = 500,
     ) -> List[dict]:
         """
         Return episodes eligible for dream consolidation:
         high-fitness, episodic, older than hours_old, not yet consolidated.
         """
+        if hours_old is None:
+            hours_old = config.CONSOLIDATION_MIN_HOURS_OLD
         cutoff = datetime.utcnow() - timedelta(hours=hours_old)
         async with self._session_factory() as session:
             result = await session.execute(

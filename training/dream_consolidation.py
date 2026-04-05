@@ -196,7 +196,6 @@ class DreamConsolidation:
         # Step 1. Fetch candidates
         candidates = await self._log.get_consolidation_candidates(
             min_fitness=min_fit,
-            hours_old=48,
             limit=500,
         )
         logger.info("DreamConsolidation: %d consolidation candidates fetched.", len(candidates))
