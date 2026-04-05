@@ -120,6 +120,29 @@ class FitnessSignalRow(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
+class KnowledgeTripleRow(Base):
+    """
+    Knowledge graph triple: (subject, predicate, object).
+
+    Inspired by HippoRAG's hippocampal index — stores relational facts
+    as a connected graph rather than flat memories. Extracted during
+    dream consolidation, queried at inference via graph traversal.
+    """
+    __tablename__ = "knowledge_triples"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    subject = Column(String(255), nullable=False, index=True)
+    predicate = Column(String(255), nullable=False, index=True)
+    object = Column(String(255), nullable=False, index=True)
+    confidence = Column(Float, default=0.5, nullable=False)
+    source_type = Column(String(64), default="consolidation")  # consolidation | conversation | validated
+    source_ids = Column(Text, default="[]")  # JSON array of episode/semantic IDs
+    validation_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+
 # ---------------------------------------------------------------------------
 # ExperienceLogger
 # ---------------------------------------------------------------------------

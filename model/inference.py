@@ -75,6 +75,21 @@ class PrismInferenceEngine:
         system = system_prompt or _DEFAULT_SYSTEM
         history = conversation_history or []
 
+        # Inject knowledge graph facts (hippocampal index retrieval)
+        if config.MEMORY_INJECTION_ENABLED:
+            try:
+                from data.knowledge_graph import get_knowledge_graph
+                kg = get_knowledge_graph()
+                entities = await kg.extract_entities_from_text(message)
+                if entities:
+                    triples = await kg.query_subgraph(entities, hops=2, top_k=15)
+                    if triples:
+                        graph_block = kg.format_for_injection(triples)
+                        system = system + "\n\n" + graph_block
+                        logger.debug("KG injection: %d triples for entities %s", len(triples), entities)
+            except Exception as e:
+                logger.debug("Knowledge graph injection skipped: %s", e)
+
         # Inject validated semantic memories into system prompt
         if config.MEMORY_INJECTION_ENABLED:
             try:

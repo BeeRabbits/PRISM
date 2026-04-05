@@ -245,7 +245,7 @@ class DreamConsolidation:
                 report["clusters_skipped_low_confidence"] += 1
                 continue
 
-            await self._store.create_semantic_memory(
+            sem_id = await self._store.create_semantic_memory(
                 content=result["semantic_memory"],
                 source_episode_ids=[ep["id"] for ep in cluster],
                 key_pattern=result["key_pattern"],
@@ -258,6 +258,23 @@ class DreamConsolidation:
                 len(cluster),
                 result["key_pattern"],
             )
+
+            # Extract knowledge triples into the hippocampal index
+            triples = result.get("triples", [])
+            if triples:
+                from data.knowledge_graph import get_knowledge_graph
+                kg = get_knowledge_graph()
+                source_ids = [ep["id"] for ep in cluster] + [sem_id]
+                added = await kg.add_triples_batch(
+                    triples,
+                    source_type="consolidation",
+                    source_ids=source_ids,
+                )
+                report["triples_extracted"] = report.get("triples_extracted", 0) + len(added)
+                logger.info(
+                    "KnowledgeGraph: extracted %d triples from cluster '%s'",
+                    len(added), result["key_pattern"],
+                )
 
         # Mark source episodes as used
         if all_consolidated_episode_ids:
@@ -447,13 +464,21 @@ Rules:
 Interactions:
 {formatted}
 
+Also extract specific factual knowledge as (subject, predicate, object) triples.
+Focus on: personal facts, relationships, preferences, habits, goals, dates.
+Use the person's actual name as subject, not "the user".
+
 Respond in valid JSON only:
 {{
   "can_consolidate": true,
   "semantic_memory": "the compressed memory text",
   "key_pattern": "one-line summary of the pattern found",
   "confidence": 0.0,
-  "reasoning": "brief explanation of what pattern was found"
+  "reasoning": "brief explanation of what pattern was found",
+  "triples": [
+    {{"subject": "Brandon", "predicate": "works at", "object": "AWS"}},
+    {{"subject": "Brandon", "predicate": "has son named", "object": "Landen"}}
+  ]
 }}"""
 
         try:
@@ -494,6 +519,7 @@ Respond in valid JSON only:
             "semantic_memory": parsed["semantic_memory"],
             "key_pattern": parsed["key_pattern"],
             "confidence": confidence,
+            "triples": parsed.get("triples", []),
         }
 
     # ------------------------------------------------------------------
