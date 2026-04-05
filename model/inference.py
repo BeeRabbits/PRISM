@@ -86,9 +86,11 @@ class PrismInferenceEngine:
                     if triples:
                         graph_block = kg.format_for_injection(triples)
                         system = system + "\n\n" + graph_block
-                        logger.debug("KG injection: %d triples for entities %s", len(triples), entities)
+                        logger.info("KG injection: %d triples for entities %s", len(triples), entities)
+                else:
+                    logger.info("KG injection: no triples found for entities %s", entities)
             except Exception as e:
-                logger.debug("Knowledge graph injection skipped: %s", e)
+                logger.warning("Knowledge graph injection failed: %s", e)
 
         # Inject validated semantic memories into system prompt
         if config.MEMORY_INJECTION_ENABLED:
@@ -107,7 +109,7 @@ class PrismInferenceEngine:
                         memory_block = "\n".join(memory_lines)
                         system = system + "\n\nConfirmed knowledge about this user:\n" + memory_block
             except Exception as e:
-                logger.debug("Memory injection skipped: %s", e)
+                logger.warning("Memory injection failed: %s", e)
 
         # Build messages list in Qwen chat format
         messages: List[dict] = [{"role": "system", "content": system}]
