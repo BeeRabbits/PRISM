@@ -315,3 +315,98 @@ async def run_consolidation() -> ConsolidationReportResponse:
         raise HTTPException(status_code=503, detail="DreamConsolidation not initialised.")
     report = await consolidation.run()
     return ConsolidationReportResponse(**report)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Graph (Hippocampal Index)
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/knowledge-graph")
+async def knowledge_graph_status() -> dict:
+    """Return knowledge graph stats and sample triples."""
+    from data.knowledge_graph import get_knowledge_graph
+    kg = get_knowledge_graph()
+    count = await kg.get_triple_count()
+    entities = await kg.get_all_entities()
+    sample = await kg.get_all_triples(limit=20)
+    return {
+        "triple_count": count,
+        "entity_count": len(entities),
+        "entities": entities[:50],
+        "sample_triples": [
+            {"subject": t["subject"], "predicate": t["predicate"],
+             "object": t["object"], "confidence": t["confidence"],
+             "validation_count": t["validation_count"]}
+            for t in sample
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Evaluation Gates
+# ---------------------------------------------------------------------------
+
+@app.post("/admin/capture-baseline")
+async def capture_baseline(request: Request) -> dict:
+    """Run eval suite and save as baseline (call when model is in known-good state)."""
+    loader = request.app.state.loader
+    from evaluation.eval_runner import EvalRunner
+    runner = EvalRunner(loader.model, loader.tokenizer)
+    report = await runner.capture_baseline()
+    return {
+        "status": "baseline_captured",
+        "general_score": report["general_score"],
+        "personal_score": report["personal_score"],
+        "general_passed": report["general_passed"],
+        "general_total": report["general_total"],
+        "personal_passed": report["personal_passed"],
+        "personal_total": report["personal_total"],
+    }
+
+
+@app.post("/admin/run-eval")
+async def run_eval(request: Request) -> dict:
+    """Run eval suite against current model state."""
+    loader = request.app.state.loader
+    from evaluation.eval_runner import EvalRunner
+    runner = EvalRunner(loader.model, loader.tokenizer)
+    report = await runner.run_evaluation(label="manual")
+    comparison = runner.compare_to_baseline(report)
+    return {
+        "general_score": report["general_score"],
+        "personal_score": report["personal_score"],
+        "overall_pass": report["overall_pass"],
+        "comparison": comparison,
+        "results": [
+            {"id": r["id"], "passed": r["passed"], "checks": r["checks"],
+             "response_preview": r["response_preview"][:100]}
+            for r in report["results"]
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# MoE-LoRA Expert Training
+# ---------------------------------------------------------------------------
+
+@app.post("/admin/train-style-expert")
+async def train_style_expert(request: Request) -> dict:
+    """Train the style expert adapter with evaluation gates."""
+    import threading
+    loader = request.app.state.loader
+    from training.moe_lora_trainer import MoELoRATrainer
+
+    trainer = MoELoRATrainer(loader.model, loader.tokenizer)
+
+    # Run in background thread
+    def _train():
+        import asyncio
+        loop = asyncio.new_event_loop()
+        result = loop.run_until_complete(trainer.train_style_expert())
+        loop.close()
+        logger.info("Style expert training result: %s", result.get("status"))
+
+    thread = threading.Thread(target=_train, daemon=True)
+    thread.start()
+
+    return {"status": "started", "message": "Style expert training started in background."}
