@@ -315,8 +315,10 @@ class KnowledgeGraph:
         if not all_triples:
             return []
 
-        # Rank by Personalized PageRank
-        ranked = self._personalized_pagerank(all_triples, entities, top_k=top_k)
+        # Rank by Personalized PageRank with keyword boost
+        ranked = self._personalized_pagerank(
+            all_triples, entities, top_k=top_k, query_text=query_text
+        )
         return ranked
 
     async def get_all_entities(self) -> List[str]:
@@ -484,13 +486,16 @@ class KnowledgeGraph:
         top_k: int = 20,
         damping: float = 0.85,
         iterations: int = 20,
+        query_text: str = "",
     ) -> List[dict]:
         """
-        Rank triples by Personalized PageRank relative to query entities.
+        Rank triples by Personalized PageRank relative to query entities,
+        with keyword relevance boosting.
 
         Builds an adjacency graph from triples, runs PPR with personalization
         vector concentrated on query entities, then scores each triple by
-        the sum of its endpoint node scores.
+        the sum of its endpoint node scores. Triples whose predicate or
+        object matches query keywords get a 3x relevance boost.
 
         Args:
             triples:         All candidate triples.
@@ -498,11 +503,27 @@ class KnowledgeGraph:
             top_k:           Max triples to return.
             damping:         PPR damping factor (0.85 standard).
             iterations:      Number of power iterations.
+            query_text:      Original query for keyword boosting.
 
         Returns:
             Top-k triples sorted by relevance score.
         """
         query_set = {normalize_entity(e) for e in query_entities}
+
+        # Build keyword set for relevance boosting
+        _stopwords = {
+            "what", "when", "where", "who", "how", "why", "is", "are", "was",
+            "were", "do", "does", "did", "the", "a", "an", "my", "your", "i",
+            "me", "to", "for", "in", "on", "at", "of", "and", "or", "about",
+            "tell", "can", "you", "that", "this", "it", "be", "have", "has",
+        }
+        query_keywords: Set[str] = set()
+        if query_text:
+            raw = set(re.findall(r"[a-z]+", query_text.lower())) - _stopwords
+            query_keywords = set(raw)
+            for w in raw:
+                if w.endswith("s") and len(w) > 3:
+                    query_keywords.add(w[:-1])
 
         # Build adjacency list
         neighbors: Dict[str, Set[str]] = defaultdict(set)
@@ -546,13 +567,19 @@ class KnowledgeGraph:
                 new_scores[i] += (1 - damping) * personalization[i]
             scores = new_scores
 
-        # Score each triple by sum of endpoint scores
+        # Score each triple by sum of endpoint scores + keyword boost
         triple_scores: List[Tuple[dict, float]] = []
         for t in triples:
             s_score = scores[node_idx[t["subject"]]] if t["subject"] in node_idx else 0
             o_score = scores[node_idx[t["object"]]] if t["object"] in node_idx else 0
-            # Weight by confidence too
+            # Weight by confidence
             relevance = (s_score + o_score) * t["confidence"]
+            # Keyword boost: triples matching query terms get 3x relevance
+            if query_keywords:
+                pred_words = set(t["predicate"].replace("_", " ").split())
+                obj_words = set(t["object"].replace("_", " ").split())
+                if query_keywords & pred_words or query_keywords & obj_words:
+                    relevance *= 3.0
             triple_scores.append((t, relevance))
 
         triple_scores.sort(key=lambda x: x[1], reverse=True)
