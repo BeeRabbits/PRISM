@@ -417,16 +417,24 @@ class KnowledgeGraph:
           → adds "landen" to query entities
           → now "landen has_birthday_on april 13th" is 1-hop, not 2-hop
         """
-        # Extract meaningful keywords (skip stopwords)
+        # Extract meaningful keywords (skip stopwords) and their stems
         stopwords = {
             "what", "when", "where", "who", "how", "why", "is", "are", "was",
             "were", "do", "does", "did", "the", "a", "an", "my", "your", "i",
             "me", "to", "for", "in", "on", "at", "of", "and", "or", "about",
             "tell", "can", "you", "that", "this", "it", "be", "have", "has",
         }
-        words = set(re.findall(r"[a-z]+", query_text.lower())) - stopwords
-        if not words:
+        raw_words = set(re.findall(r"[a-z]+", query_text.lower())) - stopwords
+        if not raw_words:
             return []
+
+        # Add simple stems: strip trailing 's', 'ing', 'ed' for fuzzy matching
+        words = set(raw_words)
+        for w in raw_words:
+            if w.endswith("s") and len(w) > 3:
+                words.add(w[:-1])  # "sons" → "son"
+            if w.endswith("ing") and len(w) > 5:
+                words.add(w[:-3])  # "working" → "work"
 
         expanded: List[str] = []
         for entity in seed_entities:
@@ -438,6 +446,9 @@ class KnowledgeGraph:
                 # connected entity as a query entity
                 if words & pred_words or words & obj_words:
                     connected = t["object"] if t["subject"] == entity else t["subject"]
+                    # Only expand to short, real entity names — not long descriptions
+                    if len(connected.split()) > 4:
+                        continue
                     if connected not in seed_entities and connected not in expanded:
                         expanded.append(connected)
         return expanded
