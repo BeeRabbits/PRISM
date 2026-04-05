@@ -494,6 +494,48 @@ class ExperienceLogger:
             for r in rows
         ]
 
+    async def get_high_oracle_episodes(
+        self,
+        min_oracle_score: float = 4.0,
+        max_delta: float = 1.0,
+        limit: int = 500,
+    ) -> List[dict]:
+        """
+        Return episodes with high oracle scores and low MIRROR delta.
+
+        These represent moments when PRISM performed well — ideal for
+        style expert training (MoE-LoRA).
+
+        Args:
+            min_oracle_score: Minimum oracle score (1-5 scale).
+            max_delta:        Maximum mirror_delta (oracle - self).
+            limit:            Maximum episodes to return.
+        """
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(EpisodeRow)
+                .where(EpisodeRow.oracle_score >= min_oracle_score)
+                .where(EpisodeRow.mirror_delta <= max_delta)
+                .where(EpisodeRow.oracle_score.isnot(None))
+                .order_by(EpisodeRow.oracle_score.desc())
+                .limit(limit)
+            )
+            rows = result.scalars().all()
+
+        return [
+            {
+                "id": r.id,
+                "session_id": r.session_id,
+                "user_message": r.user_message,
+                "assistant_response": r.assistant_response,
+                "oracle_score": r.oracle_score,
+                "mirror_delta": r.mirror_delta,
+                "fitness_score": r.fitness_score,
+                "timestamp": r.timestamp,
+            }
+            for r in rows
+        ]
+
     async def get_all_high_fitness_episodes(
         self,
         min_score: float,

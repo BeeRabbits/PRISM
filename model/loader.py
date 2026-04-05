@@ -43,6 +43,7 @@ class ModelLoader:
         self._titans_loaded: bool = False
         self._adapter_version: str = "none"
         self._cortex_loop_active: bool = False
+        self._experts_loaded: list = []
 
     # ------------------------------------------------------------------
     # Public API
@@ -59,6 +60,7 @@ class ModelLoader:
         self._ensure_downloaded()
         self._load_base_model()
         self._attach_lora_adapter()
+        self._attach_expert_adapters()
         self._attach_titans_adapter()
         logger.info("ModelLoader.load() complete. Model is ready.")
 
@@ -219,6 +221,42 @@ class ModelLoader:
         self._lora_loaded = True
         self._adapter_version = str(adapter_path.stat().st_mtime)
         logger.info("LoRA adapter attached. Version timestamp: %s", self._adapter_version)
+
+    def _attach_expert_adapters(self) -> None:
+        """Attach MoE-LoRA expert adapters if they exist on disk."""
+        from model.expert_router import get_available_experts
+
+        experts = get_available_experts()
+        if not experts:
+            logger.info("No MoE-LoRA expert adapters found. Skipping.")
+            return
+
+        for name, expert in experts.items():
+            adapter_path = Path(expert.adapter_path)
+            if not (adapter_path / "adapter_config.json").exists():
+                continue
+
+            logger.info("Attaching expert adapter '%s' from %s", name, adapter_path)
+            try:
+                if isinstance(self.model, PeftModel):
+                    # Add as a named adapter to existing PeftModel
+                    self.model.load_adapter(str(adapter_path), adapter_name=name)
+                else:
+                    # First expert — wrap model in PeftModel
+                    self.model = PeftModel.from_pretrained(
+                        self.model,
+                        str(adapter_path),
+                        adapter_name=name,
+                        is_trainable=False,
+                        torch_dtype=torch.bfloat16,
+                    )
+                self._experts_loaded.append(name)
+                logger.info("Expert adapter '%s' loaded.", name)
+            except Exception as e:
+                logger.error("Failed to load expert adapter '%s': %s", name, e)
+
+        if self._experts_loaded:
+            logger.info("MoE-LoRA: %d expert(s) loaded: %s", len(self._experts_loaded), self._experts_loaded)
 
     def _attach_titans_adapter(self) -> None:
         """Attach Titans memory adapter if trained adapter exists."""
