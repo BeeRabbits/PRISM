@@ -169,21 +169,26 @@ class PrismInferenceEngine:
         response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
         # Fix tokenizer artifacts: underscores replacing apostrophes in contractions
-        # Handle both plain (_) and markdown-escaped (\_) underscores
         import re
+        before = response
+        # Broad regex: replace any underscore between a letter and a common contraction suffix
         response = re.sub(
-            r"(\w)\\?_(t|s|d|m|ll|re|ve)(\W|$)",
-            r"\1'\2\3",
+            r"([a-zA-Z])[\x5f\uff3f]+(t|s|d|m|ll|re|ve)(?=\W|$)",
+            r"\1'\2",
             response,
         )
-        # Belt-and-suspenders: catch any remaining common contractions
-        for pattern, replacement in [
-            ("n_t", "n't"), ("_re ", "'re "), ("_ve ", "'ve "),
-            ("_ll ", "'ll "), ("_s ", "'s "), ("_d ", "'d "),
-            ("_m ", "'m "), ("_re.", "'re."), ("_ve.", "'ve."),
-            ("_ll.", "'ll."), ("_s.", "'s."), ("_s,", "'s,"),
-        ]:
-            response = response.replace(pattern, replacement)
+        # Belt-and-suspenders: direct byte-level replacements
+        _contraction_map = {
+            "n_t": "n't", "_re ": "'re ", "_ve ": "'ve ", "_ll ": "'ll ",
+            "_s ": "'s ", "_d ": "'d ", "_m ": "'m ",
+            "_re.": "'re.", "_ve.": "'ve.", "_ll.": "'ll.",
+            "_s.": "'s.", "_s,": "'s,", "_re,": "'re,",
+            "_t ": "'t ", "_s\n": "'s\n", "_re\n": "'re\n",
+        }
+        for old, new in _contraction_map.items():
+            response = response.replace(old, new)
+        if before != response:
+            logger.info("Apostrophe fix applied: %d chars changed", len(before) - len(response))
 
         # Update session memory if adapter ran
         if updated_memory_container[0] is not None:
