@@ -172,10 +172,18 @@ class PrismInferenceEngine:
         # Handle both plain (_) and markdown-escaped (\_) underscores
         import re
         response = re.sub(
-            r"(\w)\\?_(t|s|d|m|ll|re|ve)\b",
-            r"\1'\2",
+            r"(\w)\\?_(t|s|d|m|ll|re|ve)(\W|$)",
+            r"\1'\2\3",
             response,
         )
+        # Belt-and-suspenders: catch any remaining common contractions
+        for pattern, replacement in [
+            ("n_t", "n't"), ("_re ", "'re "), ("_ve ", "'ve "),
+            ("_ll ", "'ll "), ("_s ", "'s "), ("_d ", "'d "),
+            ("_m ", "'m "), ("_re.", "'re."), ("_ve.", "'ve."),
+            ("_ll.", "'ll."), ("_s.", "'s."), ("_s,", "'s,"),
+        ]:
+            response = response.replace(pattern, replacement)
 
         # Update session memory if adapter ran
         if updated_memory_container[0] is not None:
