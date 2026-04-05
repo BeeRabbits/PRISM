@@ -50,12 +50,26 @@ _USER_ALIASES = {
 _STRIP_ARTICLES = {"the", "a", "an"}
 
 
+def _build_user_name_variants(user_name: str) -> Set[str]:
+    """Build all reasonable variants of the user's name for matching."""
+    uname = user_name.strip().lower()
+    variants = {uname}
+    parts = uname.split()
+    if len(parts) >= 2:
+        # "brandon peffer" → also match "brandon", "peffer"
+        variants.add(parts[0])  # first name
+        variants.add(parts[-1])  # last name
+        # Also match with middle names dropped
+        variants.add(f"{parts[0]} {parts[-1]}")
+    return variants
+
+
 def normalize_entity(entity: str, user_name: Optional[str] = None) -> str:
     """
     Normalize an entity string for consistent graph storage.
 
     - Lowercase and strip whitespace
-    - Resolve user aliases to canonical user name
+    - Resolve user aliases and name variants to canonical user name
     - Strip leading articles
     """
     name = entity.strip().lower()
@@ -68,6 +82,11 @@ def normalize_entity(entity: str, user_name: Optional[str] = None) -> str:
     # Resolve user aliases
     uname = (user_name or config.USER_NAME).strip().lower()
     if name in _USER_ALIASES or name == uname:
+        return uname
+
+    # Also match name variants (first name, last name, full name)
+    variants = _build_user_name_variants(uname)
+    if name in variants:
         return uname
 
     return name

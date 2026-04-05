@@ -76,13 +76,19 @@ Return a JSON array of triples only:
         try:
             response = client.messages.create(
                 model=config.ANTHROPIC_MODEL,
-                max_tokens=1024,
+                max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )
             raw = response.content[0].text.strip()
             # Strip markdown fences
             raw = re.sub(r"^```(?:json)?\s*", "", raw)
             raw = re.sub(r"\s*```$", "", raw)
+            # Repair truncated JSON: if array isn't closed, close it
+            if raw.startswith("[") and not raw.rstrip().endswith("]"):
+                # Find last complete object
+                last_brace = raw.rfind("}")
+                if last_brace > 0:
+                    raw = raw[:last_brace + 1] + "]"
             triples = json.loads(raw)
 
             if triples:
