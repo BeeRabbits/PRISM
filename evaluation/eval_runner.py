@@ -313,7 +313,7 @@ class EvalRunner:
                 kg = get_knowledge_graph()
                 entities = await kg.extract_entities_from_text(prompt)
                 if entities:
-                    triples = await kg.query_subgraph(entities, hops=2, top_k=25)
+                    triples = await kg.query_subgraph(entities, hops=2, top_k=25, query_text=prompt)
                     if triples:
                         graph_block = kg.format_for_injection(triples)
                         system = system + "\n\n" + graph_block

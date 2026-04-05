@@ -269,6 +269,7 @@ class KnowledgeGraph:
         entities: List[str],
         hops: int = 2,
         top_k: int = 20,
+        query_text: str = "",
     ) -> List[dict]:
         """
         Retrieve the connected subgraph for multiple query entities,
@@ -276,16 +277,30 @@ class KnowledgeGraph:
 
         This is the main retrieval method called at inference time.
 
+        Query expansion: if query_text is provided, does a 1-hop lookup
+        from initial entities and adds connected entities whose predicates
+        or objects match query keywords. E.g., "my son's birthday" →
+        finds "brandon has_son_named landen" → adds "landen" to search.
+
         Args:
-            entities: List of entity strings extracted from user message.
-            hops:     Graph traversal depth.
-            top_k:    Maximum triples to return.
+            entities:   List of entity strings extracted from user message.
+            hops:       Graph traversal depth.
+            top_k:      Maximum triples to return.
+            query_text: Original user message for query expansion.
 
         Returns:
             List of triple dicts, ranked by relevance.
         """
         if not entities:
             return []
+
+        # Query expansion: use keywords from the query to discover
+        # related entities via 1-hop predicates/objects
+        if query_text:
+            expanded = await self._expand_query_entities(entities, query_text)
+            if expanded:
+                entities = list(set(entities + expanded))
+                logger.debug("Query expansion: added %s", expanded)
 
         # Gather all triples within hops of any query entity
         all_triples: List[dict] = []
@@ -387,6 +402,46 @@ class KnowledgeGraph:
 
     # ------------------------------------------------------------------
     # Formatting for prompt injection
+    async def _expand_query_entities(
+        self,
+        seed_entities: List[str],
+        query_text: str,
+    ) -> List[str]:
+        """
+        Query expansion: find related entities by matching query keywords
+        against predicates and objects of seed entity triples.
+
+        E.g., query "my son's birthday" with seed ["brandon"]:
+          → 1-hop: "brandon has_son_named landen"
+          → "son" matches predicate "has_son_named"
+          → adds "landen" to query entities
+          → now "landen has_birthday_on april 13th" is 1-hop, not 2-hop
+        """
+        # Extract meaningful keywords (skip stopwords)
+        stopwords = {
+            "what", "when", "where", "who", "how", "why", "is", "are", "was",
+            "were", "do", "does", "did", "the", "a", "an", "my", "your", "i",
+            "me", "to", "for", "in", "on", "at", "of", "and", "or", "about",
+            "tell", "can", "you", "that", "this", "it", "be", "have", "has",
+        }
+        words = set(re.findall(r"[a-z]+", query_text.lower())) - stopwords
+        if not words:
+            return []
+
+        expanded: List[str] = []
+        for entity in seed_entities:
+            triples = await self._triples_for_entity(entity)
+            for t in triples:
+                pred_words = set(t["predicate"].replace("_", " ").split())
+                obj_words = set(t["object"].replace("_", " ").split())
+                # If any query keyword appears in predicate or object, add the
+                # connected entity as a query entity
+                if words & pred_words or words & obj_words:
+                    connected = t["object"] if t["subject"] == entity else t["subject"]
+                    if connected not in seed_entities and connected not in expanded:
+                        expanded.append(connected)
+        return expanded
+
     # ------------------------------------------------------------------
 
     def format_for_injection(self, triples: List[dict]) -> str:
