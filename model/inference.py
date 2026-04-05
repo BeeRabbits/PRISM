@@ -82,7 +82,7 @@ class PrismInferenceEngine:
                 kg = get_knowledge_graph()
                 entities = await kg.extract_entities_from_text(message)
                 if entities:
-                    triples = await kg.query_subgraph(entities, hops=2, top_k=15)
+                    triples = await kg.query_subgraph(entities, hops=2, top_k=25)
                     if triples:
                         graph_block = kg.format_for_injection(triples)
                         system = system + "\n\n" + graph_block
