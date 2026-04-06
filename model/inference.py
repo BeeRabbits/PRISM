@@ -170,11 +170,6 @@ class PrismInferenceEngine:
 
         # Fix tokenizer artifacts: underscores replacing apostrophes in contractions
         import re
-        import sys
-        print(f"!!! INFERENCE.GENERATE CALLED, response length={len(response)}, underscores={response.count('_')}", flush=True, file=sys.stderr)
-        underscore_count = response.count('_')
-        if underscore_count > 0:
-            print(f"!!! PRE-FIX: {underscore_count} underscores: {response[:200]}", flush=True, file=sys.stderr)
         before = response
         # Broad regex: replace any underscore between a letter and a common contraction suffix
         response = re.sub(
@@ -193,9 +188,7 @@ class PrismInferenceEngine:
         for old, new in _contraction_map.items():
             response = response.replace(old, new)
         if before != response:
-            logger.warning("POST-FIX: applied apostrophe fix. Result: %s", response[:200])
-        elif underscore_count > 0:
-            logger.warning("POST-FIX: underscores found but regex did NOT match. Raw bytes of first _: U+%04X", ord(response[response.index('_')]))
+            logger.info("Apostrophe fix applied: %d chars changed", len(before) - len(response))
 
         # Update session memory if adapter ran
         if updated_memory_container[0] is not None:
