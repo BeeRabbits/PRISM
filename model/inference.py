@@ -170,9 +170,11 @@ class PrismInferenceEngine:
 
         # Fix tokenizer artifacts: underscores replacing apostrophes in contractions
         import re
+        import sys
+        print(f"!!! INFERENCE.GENERATE CALLED, response length={len(response)}, underscores={response.count('_')}", flush=True, file=sys.stderr)
         underscore_count = response.count('_')
         if underscore_count > 0:
-            logger.warning("PRE-FIX: %d underscores found in response: %s", underscore_count, response[:200])
+            print(f"!!! PRE-FIX: {underscore_count} underscores: {response[:200]}", flush=True, file=sys.stderr)
         before = response
         # Broad regex: replace any underscore between a letter and a common contraction suffix
         response = re.sub(
