@@ -24,8 +24,8 @@ def _getint(key: str, default: int = 0) -> int:
 
 # Model
 HF_TOKEN: str = _get("HF_TOKEN")
-MODEL_ID: str = _get("MODEL_ID", "Qwen/Qwen2.5-14B-Instruct")
-MODEL_LOCAL_PATH: str = _get("MODEL_LOCAL_PATH", "./model/weights/qwen2.5-14b-instruct")
+MODEL_ID: str = _get("MODEL_ID", "Qwen/Qwen2.5-32B-Instruct")
+MODEL_LOCAL_PATH: str = _get("MODEL_LOCAL_PATH", "./model/weights/qwen2.5-32b-instruct")
 
 # Adapters
 ADAPTER_PATH: str = _get("ADAPTER_PATH", "./adapters/current")

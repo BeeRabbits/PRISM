@@ -2,7 +2,7 @@
 
 **Persistent Reasoning and Intelligent Self-improving Model**
 
-A locally-hosted LLM (Qwen2.5-14B-Instruct) that continuously evolves through interaction. PRISM combines continual fine-tuning, neural memory, oracle-bootstrapped self-evaluation, and neuroscience-inspired training into a single system where the model's weights shift toward what matters over time.
+A locally-hosted LLM (Qwen2.5-32B-Instruct) that continuously evolves through interaction. PRISM combines continual fine-tuning, neural memory, oracle-bootstrapped self-evaluation, a hippocampal knowledge graph, and neuroscience-inspired training into a single system where the model's weights shift toward what matters over time.
 
 This is **not** RAG. This is **not** external memory injection. The model itself changes.
 
@@ -23,6 +23,25 @@ MIRROR solves a fundamental problem: how does a model learn to judge its own res
 This is essentially **bootstrapped alignment for self-evaluation**. The stronger model teaches the weaker model to judge itself, then steps away.
 
 See [MIRROR.md](MIRROR.md) for the full protocol specification.
+
+### Knowledge Graph: Hippocampal Indexing
+
+Inspired by HippoRAG, PRISM maintains a knowledge graph of (subject, predicate, object) triples extracted from consolidated memories. At inference time, entities are extracted from the user's message, expanded via query expansion with stemming, and relevant subgraphs are retrieved using Personalized PageRank with keyword relevance boosting.
+
+This acts as the hippocampal index — fast, associative retrieval that feeds structured facts into the system prompt. Combined with weight-level learning, PRISM both *knows* things (weights) and can *look up* things (graph).
+
+- **Entity normalization**: User name variants, stemming, article stripping
+- **Query expansion**: 1-hop predicate/object matching discovers related entities
+- **Keyword boost**: 3x score multiplier for triples whose predicate/object matches query terms
+- **Personalized PageRank**: Ranks triples by relevance to the query context
+
+### Evaluation Gates
+
+Automated pre/post training evaluation prevents catastrophic forgetting at the system level. A test suite of general capability tests (code debugging, recipe generation, email writing) and personal recall tests (user facts, preferences, relationships) runs before and after every training cycle.
+
+- General capability must stay >= 80% or the adapter is rolled back
+- Personal recall is tracked but informational (retrieval handles most of it)
+- Baseline comparison detects regression > 10%
 
 ### Neuroscience-Inspired Training Pipeline
 
@@ -62,6 +81,10 @@ Before every episode is logged, it is compared against the user's recent history
 
 Resolutions: `keep_a` (existing wins), `keep_b` (new wins), `merge` (combine both), or `keep_both` (no real contradiction). This prevents the model from training on conflicting information.
 
+### MoE-LoRA Expert Router
+
+Multiple specialized LoRA adapters can be trained for different domains (e.g., a "style" expert for conversational tone). A keyword-based router activates the appropriate expert at inference time. Each expert is trained with its own evaluation gate to prevent catastrophic forgetting.
+
 ### Cortex Loop
 
 Post-convergence, Cortex Loop increases reasoning depth by duplicating transformer layers at an optimal "seam" point in the network. Inspired by the [RYS (Repeat Your Self)](https://github.com/dnhkng/RYS) technique. A scan sweeps candidate positions and layer counts, scoring each on reasoning benchmarks before applying the best configuration.
@@ -84,16 +107,21 @@ Post-convergence, Cortex Loop increases reasoning depth by duplicating transform
 
 | Component | Speed | Persistence | What it stores |
 |---|---|---|---|
-| **QLoRA adapters** (about 50 MB) | Slow | Permanent weight changes | Values, style, preferences, knowledge |
+| **QLoRA adapters** (~17 MB) | Slow | Permanent weight changes | Values, style, preferences, knowledge |
 | **Titans memory adapter** | Fast | Per-session, evolves via training | In-context patterns, conversation state |
+| **Knowledge graph** | Instant | Persistent triple store | Structured facts, relationships, entities |
 
-**QLoRA**: The base model (29 GB) is loaded in 4-bit NF4 quantization. Only small adapter matrices are trained, achieving full fine-tuning quality at 1/4 the memory cost.
+**QLoRA**: The base model is loaded in 4-bit NF4 quantization. Only small adapter matrices are trained, achieving full fine-tuning quality at a fraction of the memory cost.
 
 **Titans adapter**: Standard transformer attention resets each call. The Titans adapter maintains a persistent memory bank across turns within a session, grafted at the embedding layer as a hook. The base model is never modified directly.
+
+**Knowledge graph**: HippoRAG-inspired triple store with entity normalization, query expansion, and Personalized PageRank retrieval. Facts are extracted from consolidated semantic memories and injected into the system prompt at inference time.
 
 ### Why Not RAG?
 
 RAG is retrieval. You fetch documents and inject them as context. The model doesn't *know* anything. PRISM makes the model *learn*. The weights shift toward the patterns that mattered. The knowledge is structural, not retrieved.
+
+The knowledge graph complements weight-level learning — it handles factual recall (names, dates, relationships) while the weights encode style, preferences, and deeper understanding.
 
 ---
 
@@ -101,36 +129,44 @@ RAG is retrieval. You fetch documents and inject them as context. The model does
 
 1. Every `/chat` call logs an episode. The Contradiction Engine screens it first.
 2. Every `/feedback` call updates that episode's fitness score (0.0 to 1.0).
-3. At 3 AM daily (configurable):
-   1. Dream Consolidation clusters and compresses episodic memories
-   2. DatasetBuilder assembles the 60/30/10 training batch with interleaved topic ordering
-   3. LoRA training runs on the combined dataset
-   4. Titans adapter trains on the same data
-   5. New adapters are hot-swapped into the live model (no restart needed)
-4. Tomorrow the model is slightly better.
+3. MIRROR Oracle (Claude) auto-scores each episode in the background.
+4. At 3 AM daily (configurable):
+   1. Active Recall tests retention on 30 previously trained episodes
+   2. Dream Consolidation clusters and compresses episodic memories into semantics
+   3. Knowledge graph triples are extracted from new semantic clusters
+   4. DatasetBuilder assembles the 60/30/10 training batch with interleaved topic ordering
+   5. Evaluation gate runs pre-training baseline
+   6. LoRA training runs on the combined dataset
+   7. Titans adapter trains on the same data
+   8. Post-training evaluation checks for regression
+   9. New adapters are hot-swapped into the live model (no restart needed)
+5. Tomorrow the model is slightly better.
 
 ---
 
 ## Training Results
 
-Across multiple training cycles on 2,500+ episodes with 30% general knowledge mixing:
+Latest training on 2,900+ episodes with Qwen2.5-32B-Instruct:
 
-| Run | Date | LoRA Eval Loss | Titans Loss |
-|---|---|---|---|
-| 1 | 03/28 | 0.8209 | 0.6275 |
-| 2 | 03/31 | 0.8425 | 0.6324 |
-| 3 | 04/01 | 0.8179 | 0.6322 |
-| 4 | 04/01 | 0.8175 | 0.6320 |
+| Metric | Value |
+|---|---|
+| LoRA train loss | 1.74 → 1.10 |
+| LoRA eval loss | 1.128 |
+| Titans avg loss | 1.276 |
+| Trainable params | 8.4M / 32.8B (0.026%) |
+| MIRROR rolling avg delta | 1.660 |
+| Avg oracle score (32B) | 2.3 / 5.0 |
+| General eval | 100% (10/10) |
+| Personal eval | 100% (10/10) |
+| Knowledge graph | 402 triples, 327 entities |
 
-MIRROR delta: 2.103 to 1.900 over training cycles (convergence target: 0.30).
-
-The 60/30/10 mixed training split (episodic, general knowledge, spaced replay) successfully prevents catastrophic forgetting while allowing the model to learn from user interactions. Back-to-back training cycles show consistent improvement, with eval loss dropping from 0.842 to 0.817.
+The 60/30/10 mixed training split (episodic, general knowledge, spaced replay) successfully prevents catastrophic forgetting while allowing the model to learn from user interactions.
 
 ---
 
 ## Quick Start
 
-**Requirements:** Ubuntu 22/24, NVIDIA GPU (A100 40GB recommended), CUDA 12.4+
+**Requirements:** Ubuntu 22/24, NVIDIA GPU (A40 48GB recommended for 32B), CUDA 12.4+
 
 ```bash
 # Clone
@@ -142,9 +178,9 @@ pip install -r requirements.txt
 
 # Configure
 cp .env.example .env
-# Edit .env: set HF_TOKEN, ANTHROPIC_API_KEY (for MIRROR + Dream Consolidation)
+# Edit .env: set HF_TOKEN, ANTHROPIC_API_KEY, USER_NAME
 
-# Download model (about 29 GB)
+# Download model
 python scripts/download_model.py
 
 # Start
@@ -167,17 +203,32 @@ Claude simulates conversations as the user, PRISM responds, and MIRROR auto-scor
 python scripts/mirror_autopilot.py --turns 500
 ```
 
+### Data Management
+
+```bash
+# Clean corrupted episodes (Chinese characters, underscore artifacts)
+python scripts/clean_episodes.py
+
+# Seed knowledge graph from semantic memories
+python scripts/seed_knowledge_graph.py
+
+# Merge duplicate knowledge graph entities
+python scripts/merge_kg_entities.py
+```
+
 ---
 
 ## Tech Stack
 
-- **Base model**: Qwen2.5-14B-Instruct (4-bit NF4 quantization)
-- **Fine-tuning**: QLoRA via PEFT + SFTTrainer
+- **Base model**: Qwen2.5-32B-Instruct (4-bit NF4 quantization)
+- **Fine-tuning**: QLoRA via PEFT + SFTTrainer (rank 8, ~8.4M trainable params)
 - **Memory**: Custom Titans cross-attention adapter with MaG gating
+- **Knowledge**: HippoRAG-inspired triple store with Personalized PageRank
 - **Oracle**: Claude (Anthropic API) for MIRROR scoring + Dream Consolidation
 - **Server**: FastAPI + Uvicorn
-- **Storage**: SQLite (episodes, semantic memories, contradiction logs)
+- **Storage**: SQLite (episodes, semantic memories, contradiction logs, knowledge triples)
 - **Training**: PyTorch + Transformers + BitsAndBytes
+- **Evaluation**: Automated test suite with regression detection and auto-rollback
 
 ---
 
@@ -186,7 +237,7 @@ python scripts/mirror_autopilot.py --turns 500
 PRISM builds on the work of many researchers and open-source projects:
 
 **Models and Frameworks**
-- [Qwen2.5-14B-Instruct](https://huggingface.co/Qwen/Qwen2.5-14B-Instruct) by Alibaba Qwen Team
+- [Qwen2.5-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-32B-Instruct) by Alibaba Qwen Team
 - [Claude](https://www.anthropic.com/) by Anthropic, used as the MIRROR Oracle and for Dream Consolidation
 - [PyTorch](https://pytorch.org/), [Transformers](https://huggingface.co/docs/transformers), [PEFT](https://huggingface.co/docs/peft), and [TRL](https://huggingface.co/docs/trl) by Hugging Face
 - [BitsAndBytes](https://github.com/TimDettmers/bitsandbytes) by Tim Dettmers
@@ -195,9 +246,11 @@ PRISM builds on the work of many researchers and open-source projects:
 - **Titans adapter**: "Titans: Learning to Memorize at Test Time" (Google DeepMind, 2024). PRISM's memory adapter and MaG gating mechanism are based on this work.
 - **LoRA**: "LoRA: Low-Rank Adaptation of Large Language Models" (Hu et al., Microsoft Research, 2021)
 - **QLoRA**: "QLoRA: Efficient Finetuning of Quantized Language Models" (Dettmers et al., 2023)
+- **HippoRAG**: "HippoRAG: Neurobiologically Inspired Long-Term Memory for Large Language Models" (Gutierrez et al., 2024). PRISM's knowledge graph architecture is inspired by this work.
 - **RYS**: [Repeat Your Self](https://github.com/dnhkng/RYS) by dnhkng. Cortex Loop's layer duplication technique is inspired by this project.
 
 **Neuroscience Foundations**
+- **Complementary Learning Systems (CLS)**: McClelland, McNaughton, and O'Reilly (1995). The dual-speed architecture (fast hippocampal KG + slow neocortical weights) is based on CLS theory.
 - **Spaced Repetition**: Based on the spacing effect (Ebbinghaus, 1885) and modern spaced repetition research (Piotr Wozniak)
 - **Active Recall**: "Test-Enhanced Learning" (Roediger and Karpicke, 2006). Testing strengthens retention more than re-study.
 - **Targeted Memory Reactivation (TMR)**: Research by Rasch et al. (2007) and Oudiette and Paller (2013) on memory reactivation during sleep
