@@ -45,7 +45,8 @@ class TitansMemoryAdapter(nn.Module):
     Titans-inspired memory adapter grafted onto a transformer's embedding output.
 
     Args:
-        model_hidden_size: Hidden dimension of the base transformer (e.g. 3584 for Qwen2.5-7B).
+        model_hidden_size: Hidden dimension of the base transformer
+                           (e.g. 5120 for Qwen2.5-32B, 3584 for Qwen2.5-7B).
         memory_size:       Number of memory slots (rows in the bank).
         memory_dim:        Dimension of each memory slot.
         momentum:          EMA coefficient for online memory update.

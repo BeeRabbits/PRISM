@@ -1,5 +1,8 @@
 """
-Download Qwen2.5-7B-Instruct from HuggingFace and verify the download.
+Download the configured Qwen2.5 base model (default Qwen2.5-32B-Instruct)
+from HuggingFace and verify the download.
+
+The exact repo is read from config.MODEL_ID / .env.
 
 Usage:
     python scripts/download_model.py

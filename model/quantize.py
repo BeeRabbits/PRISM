@@ -1,4 +1,4 @@
-"""4-bit quantization configuration for Qwen2.5-7B-Instruct."""
+"""4-bit NF4 quantization config for the Qwen2.5 base model (default 32B-Instruct)."""
 
 from __future__ import annotations
 

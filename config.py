@@ -48,11 +48,17 @@ DEVICE: str = _get("DEVICE", "cuda")
 QUANTIZATION: str = _get("QUANTIZATION", "4bit")
 
 # LoRA
-LORA_RANK: int = _getint("LORA_RANK", 16)
-LORA_ALPHA: int = _getint("LORA_ALPHA", 32)
+# Defaults tuned for Qwen2.5-32B (4-bit NF4) on a 48GB Ada-class GPU
+# (RTX 6000 Ada / L40S). Targets all 7 linear modules at rank 32 — the
+# standard QLoRA recipe (Dettmers et al.). Yields ~55M trainable params
+# (~0.17% of base), giving the adapter real expressive capacity vs the
+# previous 8.4M (~0.026%) which only touched q_proj/v_proj.
+LORA_RANK: int = _getint("LORA_RANK", 32)
+LORA_ALPHA: int = _getint("LORA_ALPHA", 64)
 LORA_DROPOUT: float = _getfloat("LORA_DROPOUT", 0.05)
 LORA_TARGET_MODULES: list[str] = _get(
-    "LORA_TARGET_MODULES", "q_proj,v_proj"
+    "LORA_TARGET_MODULES",
+    "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
 ).split(",")
 
 # Titans
@@ -68,12 +74,20 @@ TRAINING_MIN_EPISODES: int = _getint("TRAINING_MIN_EPISODES", 50)
 TRAINING_CRON: str = _get("TRAINING_CRON", "0 3 * * *")
 
 # Training hyperparameters
+# Defaults sized for 48GB VRAM (RTX 6000 Ada / L40S) running 32B QLoRA
+# with the wider rank-32 / 7-module target set above. Effective batch = 8.
 MAX_SEQ_LENGTH: int = _getint("MAX_SEQ_LENGTH", 4096)
 BATCH_SIZE: int = _getint("BATCH_SIZE", 2)
 GRAD_ACCUM_STEPS: int = _getint("GRAD_ACCUM_STEPS", 4)
 LEARNING_RATE: float = _getfloat("LEARNING_RATE", 5e-5)
 WARMUP_RATIO: float = _getfloat("WARMUP_RATIO", 0.03)
 NUM_EPOCHS: int = _getint("NUM_EPOCHS", 1)
+
+# Attention implementation. "flash_attention_2" gives ~1.3-1.8x training
+# speedup on Ada/Hopper and is required to keep wide-LoRA training fast at
+# 4k context. Falls back to "sdpa" automatically if flash-attn isn't
+# installed (see model/loader.py).
+ATTN_IMPLEMENTATION: str = _get("ATTN_IMPLEMENTATION", "flash_attention_2")
 
 # Anthropic API (used by Dream Consolidation + Contradiction Engine)
 ANTHROPIC_API_KEY: str = _get("ANTHROPIC_API_KEY")

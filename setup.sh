@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # PRISM: Full Environment Setup
-# Run once on a fresh Ubuntu 24.04 GPU instance (RunPod A100 / RTX 4090)
+# Run once on a fresh Ubuntu 24.04 GPU instance.
+# Recommended pod: RunPod RTX 6000 Ada (48GB, Ada Lovelace) at $0.77/hr.
+# Also works on: L40S, A40, A100 80GB, H100 (any 48GB+ Ada/Hopper card).
 # Usage: bash setup.sh
 
 set -euo pipefail
@@ -79,6 +81,15 @@ uv pip install \
 
 echo "  Installing test / dev dependencies..."
 uv pip install pytest pytest-asyncio httpx
+
+# ---------------------------------------------------------------------------
+# 4b. FlashAttention-2 (~1.3-1.8x training speedup on Ada/Hopper)
+# ---------------------------------------------------------------------------
+echo "  Installing FlashAttention-2 (this can take 5-10 min to compile)..."
+# Needs torch + ninja already importable; --no-build-isolation lets it see them.
+uv pip install ninja packaging
+uv pip install flash-attn --no-build-isolation || \
+    echo "  [warn] flash-attn install failed; loader will fall back to SDPA."
 
 # ---------------------------------------------------------------------------
 # 5. Verify CUDA

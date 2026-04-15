@@ -1,11 +1,14 @@
 """
-ModelLoader: loads Qwen2.5-7B-Instruct with optional LoRA and Titans adapters.
+ModelLoader: loads the configured Qwen2.5 base model (default 32B-Instruct)
+with optional LoRA and Titans adapters.
 
 The loader handles:
   1. Downloading the base model if not present locally.
-  2. Loading with 4-bit quantization.
-  3. Attaching an existing LoRA adapter (PEFT) if available.
-  4. Attaching the Titans memory adapter if available.
+  2. Loading with 4-bit NF4 quantization (BitsAndBytes).
+  3. Picking the best attention kernel (FlashAttention-2 if installed,
+     else SDPA).
+  4. Attaching an existing LoRA adapter (PEFT) if available.
+  5. Attaching the Titans memory adapter if available.
 """
 
 from __future__ import annotations
@@ -132,6 +135,7 @@ class ModelLoader:
 
         logger.info("Loading base model with 4-bit quantization...")
         bnb_config = get_bnb_config()
+        attn_impl = self._resolve_attn_implementation()
 
         self.model = AutoModelForCausalLM.from_pretrained(
             local,
@@ -139,10 +143,14 @@ class ModelLoader:
             device_map="auto",
             trust_remote_code=True,
             torch_dtype=torch.bfloat16,
+            attn_implementation=attn_impl,
+            low_cpu_mem_usage=True,  # stream shards; avoids CPU-RAM spike on 32B/72B
         )
         self.model.config.use_cache = False  # required for gradient checkpointing
         device_map = getattr(self.model, "hf_device_map", "auto")
-        logger.info("Base model loaded. Device map: %s", device_map)
+        logger.info(
+            "Base model loaded. attn=%s | device_map: %s", attn_impl, device_map
+        )
 
         # Cortex Loop: apply layer duplication at runtime via pointer manipulation.
         # This works with quantized models because we reuse the already-loaded
@@ -150,6 +158,31 @@ class ModelLoader:
         # the reasoning circuit.
         if config.CORTEX_LOOP_ENABLED and config.CORTEX_LOOP_SCAN_COMPLETE:
             self._apply_cortex_loop_runtime()
+
+    @staticmethod
+    def _resolve_attn_implementation() -> str:
+        """
+        Return the attention kernel to use.
+
+        Honors config.ATTN_IMPLEMENTATION but transparently falls back to
+        "sdpa" if the user requested flash_attention_2 and the package isn't
+        importable on this machine. This keeps the loader portable across
+        Ada/Hopper boxes (where flash-attn is installed) and dev laptops.
+        """
+        requested = getattr(config, "ATTN_IMPLEMENTATION", "sdpa") or "sdpa"
+        if requested != "flash_attention_2":
+            return requested
+
+        try:
+            import flash_attn  # noqa: F401
+            return "flash_attention_2"
+        except ImportError:
+            logger.warning(
+                "flash_attention_2 requested but flash-attn is not installed. "
+                "Falling back to sdpa. Install with: "
+                "pip install flash-attn --no-build-isolation"
+            )
+            return "sdpa"
 
     def _apply_cortex_loop_runtime(self) -> None:
         """Apply Cortex Loop layer duplication at runtime using pointer manipulation."""

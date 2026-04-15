@@ -2,7 +2,7 @@
 
 **Persistent Reasoning and Intelligent Self-improving Model**
 
-A locally-hosted LLM (Qwen2.5-32B-Instruct) that continuously evolves through interaction. PRISM combines continual fine-tuning, neural memory, oracle-bootstrapped self-evaluation, a hippocampal knowledge graph, and neuroscience-inspired training into a single system where the model's weights shift toward what matters over time.
+A locally-hosted LLM (Qwen2.5-32B-Instruct, 4-bit QLoRA, runs on a single 48 GB Ada GPU such as the RTX 6000 Ada) that continuously evolves through interaction. PRISM combines continual fine-tuning, neural memory, oracle-bootstrapped self-evaluation, a hippocampal knowledge graph, and neuroscience-inspired training into a single system where the model's weights shift toward what matters over time.
 
 This is **not** RAG. This is **not** external memory injection. The model itself changes.
 
@@ -153,7 +153,8 @@ Latest training on 2,900+ episodes with Qwen2.5-32B-Instruct:
 | LoRA train loss | 1.74 → 1.10 |
 | LoRA eval loss | 1.128 |
 | Titans avg loss | 1.276 |
-| Trainable params | 8.4M / 32.8B (0.026%) |
+| Trainable params (legacy q/v rank-8) | 8.4M / 32.8B (0.026%) |
+| Trainable params (current wide rank-32) | ~55M / 32.8B (~0.17%) |
 | MIRROR rolling avg delta | 1.660 |
 | Avg oracle score (32B) | 2.3 / 5.0 |
 | General eval | 100% (10/10) |
@@ -162,11 +163,25 @@ Latest training on 2,900+ episodes with Qwen2.5-32B-Instruct:
 
 The 60/30/10 mixed training split (episodic, general knowledge, spaced replay) successfully prevents catastrophic forgetting while allowing the model to learn from user interactions.
 
+**Adapter capacity upgrade.** The default LoRA config now targets all 7 linear modules (`q,k,v,o,gate,up,down`) at rank 32 instead of the legacy `q_proj,v_proj` rank-8 setup. That moves trainable params from ~8.4M (0.026%) to ~55M (~0.17%) — roughly 6.5× more adapter capacity, on the same hardware, in the same per-cycle training time. This is the standard QLoRA recipe (Dettmers et al., 2023) and is the single biggest lever for personalization quality before changing the base model. To revert to the narrow legacy config, set `LORA_RANK=8` and `LORA_TARGET_MODULES=q_proj,v_proj` in `.env`.
+
 ---
 
 ## Quick Start
 
-**Requirements:** Ubuntu 22/24, NVIDIA GPU (A40 48GB recommended for 32B), CUDA 12.4+
+**Requirements:** Ubuntu 22/24, NVIDIA GPU with **48GB+ VRAM** (Ada Lovelace or newer recommended), CUDA 12.4+
+
+**Recommended pod (RunPod):** **RTX 6000 Ada (48 GB) @ ~$0.77/hr** — Ada Lovelace gives ~2.5–3× faster training cycles than the older A40 at the same VRAM, with FlashAttention-2 support and 62 GB system RAM (no CPU-RAM cliff at model load). $100 of credit ≈ 130 hours of training.
+
+| Tier | GPU | VRAM | $/hr (RunPod) | Notes |
+|---|---|---|---|---|
+| **Recommended** | RTX 6000 Ada | 48 GB | $0.77 | Best $/training-speed for 32B QLoRA |
+| Budget | A40 | 48 GB | $0.44 ($0.22 spot) | Works but ~3× slower; 50 GB RAM tight on load |
+| Speed | L40S | 48 GB | $0.86 ($0.71 spot) | Same Ada gen, slightly faster |
+| Bursts | H100 PCIe | 80 GB | $2.03 spot | Fastest wall-clock; ~10–15 min cycles |
+| Headroom | RTX PRO 6000 | 96 GB | $1.61 spot | Blackwell, room to grow LoRA rank further |
+
+PRISM is single-GPU by design (no FSDP/DDP). 2× GPU pods (e.g. 2× RTX 5090) provide no training speedup here.
 
 ```bash
 # Clone
@@ -221,7 +236,8 @@ python scripts/merge_kg_entities.py
 ## Tech Stack
 
 - **Base model**: Qwen2.5-32B-Instruct (4-bit NF4 quantization)
-- **Fine-tuning**: QLoRA via PEFT + SFTTrainer (rank 8, ~8.4M trainable params)
+- **Fine-tuning**: QLoRA via PEFT + SFTTrainer (rank 32 across all 7 linear modules, ~55M trainable params)
+- **Attention kernel**: FlashAttention-2 on Ada/Hopper (auto-falls-back to SDPA)
 - **Memory**: Custom Titans cross-attention adapter with MaG gating
 - **Knowledge**: HippoRAG-inspired triple store with Personalized PageRank
 - **Oracle**: Claude (Anthropic API) for MIRROR scoring + Dream Consolidation

@@ -2,6 +2,12 @@
 # Install: pip install -r requirements.txt
 # PyTorch must be installed separately first:
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#
+# Optional but strongly recommended on Ada/Hopper GPUs (RTX 6000 Ada, L40S,
+# A100, H100): FlashAttention-2 for ~1.3-1.8x training speedup. Install
+# AFTER torch is in place. PRISM's loader auto-falls-back to SDPA if missing:
+#   pip install ninja packaging
+#   pip install flash-attn --no-build-isolation
 
 transformers==4.46.3
 accelerate>=0.34.0,<1.0
