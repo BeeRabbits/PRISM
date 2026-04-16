@@ -77,7 +77,7 @@ NUM_EPOCHS: int = _getint("NUM_EPOCHS", 1)
 
 # Anthropic API (used by Dream Consolidation + Contradiction Engine)
 ANTHROPIC_API_KEY: str = _get("ANTHROPIC_API_KEY")
-ANTHROPIC_MODEL: str = _get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+ANTHROPIC_MODEL: str = _get("ANTHROPIC_MODEL", "claude-opus-4-7")
 
 # Dream Consolidation
 CONSOLIDATION_MIN_FITNESS: float = _getfloat("CONSOLIDATION_MIN_FITNESS", 0.6)
@@ -96,7 +96,7 @@ SEMANTIC_PRUNE_DAYS: int = _getint("SEMANTIC_PRUNE_DAYS", 14)
 
 # MIRROR Protocol
 MIRROR_ENABLED: bool = _get("MIRROR_ENABLED", "true").lower() in ("true", "1", "yes")
-MIRROR_ORACLE_MODEL: str = _get("MIRROR_ORACLE_MODEL", "claude-sonnet-4-6")
+MIRROR_ORACLE_MODEL: str = _get("MIRROR_ORACLE_MODEL", "claude-opus-4-7")
 MIRROR_ANTHROPIC_API_KEY: str = _get("MIRROR_ANTHROPIC_API_KEY") or ANTHROPIC_API_KEY
 MIRROR_CONTEXT_FILE: str = _get("MIRROR_CONTEXT_FILE", "./data/mirror_context.md")
 MIRROR_CONVERGENCE_THRESHOLD: float = _getfloat("MIRROR_CONVERGENCE_THRESHOLD", 0.30)
