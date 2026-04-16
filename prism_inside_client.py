@@ -252,6 +252,11 @@ class PrismInsideClient:
                     print(f"  Convergence window  : {m['convergence_window']}")
                     est = m.get('estimated_episodes_to_convergence')
                     print(f"  Est. to convergence : {est}" if est is not None else "  Est. to convergence : N/A")
+                    dist = m.get('delta_distribution')
+                    if dist:
+                        print(f"  Delta distribution  : min={dist['min']:.2f} p10={dist['p10']:.2f} "
+                              f"p50={dist['p50']:.2f} p90={dist['p90']:.2f} max={dist['max']:.2f}")
+                        print(f"  Below threshold     : {dist['pct_below_threshold'] * 100:.1f}%")
                     print()
                 except requests.HTTPError as e:
                     print(f"  Error: {e}\n")

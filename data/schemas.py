@@ -201,6 +201,7 @@ class MirrorStatusResponse(BaseModel):
     convergence_window: int
     delta_sample_size: int
     estimated_episodes_to_convergence: Optional[int]
+    delta_distribution: Optional[dict] = None  # min, p10, p50, p90, max, pct_below_threshold
 
 
 class ConsolidationReportResponse(BaseModel):

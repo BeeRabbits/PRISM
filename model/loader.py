@@ -1,5 +1,5 @@
 """
-ModelLoader: loads Qwen2.5-7B-Instruct with optional LoRA and Titans adapters.
+ModelLoader: loads Qwen2.5-32B-Instruct with optional LoRA and Titans adapters.
 
 The loader handles:
   1. Downloading the base model if not present locally.

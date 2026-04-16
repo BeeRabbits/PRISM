@@ -313,6 +313,14 @@ class TrainingScheduler:
                 nightly_report["mirror"] = mirror_stats
                 avg_delta = mirror_stats.get("rolling_avg_delta")
                 sample_size = mirror_stats.get("delta_sample_size", 0)
+                dist = mirror_stats.get("delta_distribution")
+                if dist is not None:
+                    logger.info(
+                        "MIRROR delta distribution: min=%.2f p10=%.2f p50=%.2f "
+                        "p90=%.2f max=%.2f pct_below_threshold=%.1f%%",
+                        dist["min"], dist["p10"], dist["p50"],
+                        dist["p90"], dist["max"], dist["pct_below_threshold"] * 100,
+                    )
                 if (
                     avg_delta is not None
                     and sample_size >= config.MIRROR_CONVERGENCE_WINDOW

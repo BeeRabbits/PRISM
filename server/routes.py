@@ -289,6 +289,7 @@ async def mirror_status() -> MirrorStatusResponse:
         convergence_window=window,
         delta_sample_size=sample,
         estimated_episodes_to_convergence=est,
+        delta_distribution=stats.get("delta_distribution"),
     )
 
 

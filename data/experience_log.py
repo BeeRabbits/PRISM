@@ -400,11 +400,36 @@ class ExperienceLogger:
         deltas = [r.mirror_delta for r in recent if r.mirror_delta is not None]
         avg_delta = sum(deltas) / len(deltas) if deltas else None
 
+        # Distribution detail: helps detect a noise floor vs. a reachable convergence
+        # target. If p10 stays far above MIRROR_CONVERGENCE_THRESHOLD, the threshold
+        # is likely below the stochastic floor of the scoring process.
+        distribution = None
+        if deltas:
+            sorted_d = sorted(deltas)
+            n = len(sorted_d)
+
+            def _pct(p: float) -> float:
+                idx = min(n - 1, max(0, int(round(p * (n - 1)))))
+                return sorted_d[idx]
+
+            threshold = config.MIRROR_CONVERGENCE_THRESHOLD
+            distribution = {
+                "min": round(sorted_d[0], 3),
+                "p10": round(_pct(0.10), 3),
+                "p50": round(_pct(0.50), 3),
+                "p90": round(_pct(0.90), 3),
+                "max": round(sorted_d[-1], 3),
+                "pct_below_threshold": round(
+                    sum(1 for d in deltas if d < threshold) / n, 3
+                ),
+            }
+
         return {
             "auto_scored_count": len(auto_scored),
             "oracle_calls": len([e for e in auto_scored if e.oracle_score is not None]),
             "rolling_avg_delta": round(avg_delta, 3) if avg_delta is not None else None,
             "delta_sample_size": len(deltas),
+            "delta_distribution": distribution,
         }
 
     async def get_episodes_with_delta(

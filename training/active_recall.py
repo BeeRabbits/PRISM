@@ -9,7 +9,8 @@ get fast-tracked for replay in the next training batch.
 Pipeline:
   1. Sample N episodes that have been trained on.
   2. Prompt the model with each user_message.
-  3. Compare generated response to stored assistant_response via trigram cosine.
+  3. Score similarity to stored assistant_response via max(trigram, token-F1)
+     so correct paraphrases aren't falsely flagged as forgotten.
   4. Episodes scoring below ACTIVE_RECALL_THRESHOLD are considered "forgotten".
   5. Reset their replay schedule to immediate (next_replay_at = now).
 
@@ -26,7 +27,7 @@ import torch
 
 import config
 from data.experience_log import ExperienceLogger, get_experience_logger
-from utils.text_similarity import cosine_similarity_trigram
+from utils.text_similarity import semantic_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ class ActiveRecallLoop:
             new_tokens = output[0][input_ids.shape[1]:]
             generated = self._tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
-            return cosine_similarity_trigram(generated, original_response)
+            return semantic_similarity(generated, original_response)
 
         except RuntimeError as e:
             if "out of memory" in str(e).lower():

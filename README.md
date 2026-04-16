@@ -6,6 +6,8 @@ A locally-hosted LLM (Qwen2.5-32B-Instruct) that continuously evolves through in
 
 This is **not** RAG. This is **not** external memory injection. The model itself changes.
 
+> **External dependency:** inference runs 100% locally, but the *training loop* relies on the Anthropic API (Claude acts as the MIRROR Oracle, the Dream Consolidation LLM, and the Contradiction judge) until MIRROR converges and retires the oracle. If `ANTHROPIC_API_KEY` is unset, these steps degrade gracefully — episodes are still logged and served, but self-evaluation, consolidation, and contradiction screening are skipped until the key is provided.
+
 ---
 
 ## Core Innovations
@@ -265,3 +267,5 @@ PRISM builds on the work of many researchers and open-source projects:
 ## License
 
 [Business Source License 1.1](LICENSE) - Free for non-commercial and educational use. Converts to Apache 2.0 on 2030-04-01.
+
+BSL 1.1 is *source-available*, not OSI-approved open source. Reading, modifying, and running the code for non-commercial purposes is fine; commercial use before the 2030 Apache conversion requires a separate license.
