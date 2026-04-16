@@ -44,41 +44,11 @@ source .venv/bin/activate
 # 4. Python dependencies
 # ---------------------------------------------------------------------------
 echo "[5/7] Installing Python dependencies (PyTorch + CUDA 12.4)..."
-uv pip install torch torchvision torchaudio \
+uv pip install torch==2.6.0 torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cu124
 
-echo "  Installing ML / training dependencies..."
-uv pip install \
-    transformers \
-    accelerate \
-    peft \
-    datasets \
-    bitsandbytes \
-    unsloth \
-    trl \
-    einops \
-    sentencepiece \
-    huggingface_hub \
-    wandb
-
-echo "  Installing server / data dependencies..."
-uv pip install \
-    fastapi \
-    uvicorn \
-    sqlalchemy \
-    aiosqlite \
-    asyncpg \
-    psycopg2-binary \
-    pgvector \
-    python-dotenv \
-    apscheduler \
-    anthropic \
-    openai \
-    rich \
-    typer
-
-echo "  Installing test / dev dependencies..."
-uv pip install pytest pytest-asyncio httpx
+echo "  Installing pinned dependencies from requirements.txt..."
+uv pip install -r requirements.txt
 
 # ---------------------------------------------------------------------------
 # 5. Verify CUDA
