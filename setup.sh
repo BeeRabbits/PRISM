@@ -50,6 +50,27 @@ uv pip install torch==2.6.0 torchvision torchaudio \
 echo "  Installing pinned dependencies from requirements.txt..."
 uv pip install -r requirements.txt
 
+echo "  Applying bitsandbytes + triton 3.x compat shim..."
+PYTHON_VER=$(.venv/bin/python -c "import sys; print(f'python{sys.version_info.major}.{sys.version_info.minor}')")
+TRITON_OPS_DIR=".venv/lib/${PYTHON_VER}/site-packages/triton/ops"
+mkdir -p "$TRITON_OPS_DIR"
+: > "$TRITON_OPS_DIR/__init__.py"
+cat > "$TRITON_OPS_DIR/matmul_perf_model.py" <<'EOF'
+"""Shim for triton.ops.matmul_perf_model removed in triton 3.x.
+
+bitsandbytes 0.45.x imports these unconditionally but only uses them
+for int8 autotune, which PRISM doesn't hit (uses 4-bit NF4).
+"""
+
+
+def early_config_prune(configs, named_args=None, **kwargs):
+    return configs
+
+
+def estimate_matmul_time(*args, **kwargs):
+    return 0.0
+EOF
+
 # ---------------------------------------------------------------------------
 # 5. Verify CUDA
 # ---------------------------------------------------------------------------
