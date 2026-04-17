@@ -255,7 +255,7 @@ Respond in valid JSON only:
         try:
             response = await client.messages.create(
                 model=config.ANTHROPIC_MODEL,
-                max_tokens=512,
+                max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}],
             )
             raw = response.content[0].text.strip()
