@@ -79,7 +79,7 @@ By using a stronger model (Claude) as a temporary oracle, PRISM bootstraps its o
 | `MIRROR_ORACLE_MODEL` | `claude-opus-4-7` | Claude model for oracle |
 | `MIRROR_ANTHROPIC_API_KEY` | (falls back to ANTHROPIC_API_KEY) | API key for oracle |
 | `MIRROR_CONTEXT_FILE` | `./data/mirror_context.md` | User context file path |
-| `MIRROR_CONVERGENCE_THRESHOLD` | `0.30` | Delta threshold for convergence |
+| `MIRROR_CONVERGENCE_THRESHOLD` | `0.50` | Delta threshold for convergence (float-scale scoring) |
 | `MIRROR_CONVERGENCE_WINDOW` | `50` | Episodes to average for convergence |
 | `MIRROR_CONVERGED` | `false` | Set true when converged |
 

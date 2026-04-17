@@ -273,12 +273,16 @@ async def mirror_status() -> MirrorStatusResponse:
     window = _cfg.MIRROR_CONVERGENCE_WINDOW
     sample = stats["delta_sample_size"]
 
-    # Rough estimate: if delta is decreasing, how many more episodes needed
+    # Rough estimate: if delta is decreasing, how many more episodes needed.
+    # Rate derived empirically (~0.00025 delta reduction per autopilot
+    # episode pre-training, observed 0.12 drop over 500 episodes). LoRA
+    # training cycles accelerate this sharply but aren't modeled here,
+    # so this is an UPPER bound that assumes oracle-only calibration.
     est = None
     if avg is not None and avg > threshold and sample >= 5:
-        # Simple linear extrapolation, will be refined over time
+        EMPIRICAL_RATE = 0.00025
         gap = avg - threshold
-        est = int(gap / 0.01) if gap > 0 else 0  # ~1 episode per 0.01 delta reduction
+        est = int(gap / EMPIRICAL_RATE) if gap > 0 else 0
 
     return MirrorStatusResponse(
         mirror_mode=mode,

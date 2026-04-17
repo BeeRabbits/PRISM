@@ -77,12 +77,18 @@ Evaluate the PRISM response based on:
 4. Accuracy: Are any facts or suggestions correct?
 5. Conciseness: Is it appropriately brief or detailed for the question?
 
-Score from 1-5:
-  1 = Terrible (wrong, generic, unhelpful)
-  2 = Poor (partially relevant but mostly filler)
-  3 = Acceptable (correct but generic)
-  4 = Good (relevant, helpful, some personality)
-  5 = Excellent (personalized, insightful, natural)
+Score on a CONTINUOUS scale from 1.0 to 5.0 with one decimal place
+(e.g. 2.7, 3.4, 4.1). Anchors:
+  1.0 = Terrible (wrong, generic, unhelpful)
+  2.0 = Poor (partially relevant but mostly filler)
+  3.0 = Acceptable (correct but generic)
+  4.0 = Good (relevant, helpful, some personality)
+  5.0 = Excellent (personalized, insightful, natural)
+
+Use the full float range to distinguish close cases. For example, 3.7 for
+"better than acceptable but not quite good", or 4.3 for "good with a hint
+of the personal touch that pushes toward excellent". Whole numbers are
+allowed but fractional scores are preferred for anything between anchors.
 
 Respond in JSON only. No markdown fences."""
 
@@ -92,7 +98,7 @@ USER: {user_message}
 
 PRISM: {prism_response}
 
-{{"oracle_score": <1-5>, "reasoning": "<1-2 sentences>"}}"""
+{{"oracle_score": <1.0-5.0>, "reasoning": "<1-2 sentences>"}}"""
 
     try:
         response = await client.messages.create(
