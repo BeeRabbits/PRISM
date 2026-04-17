@@ -27,9 +27,10 @@ apt-get install -y \
 echo "[3/7] Installing uv..."
 if ! command -v uv &>/dev/null; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    # Add uv to PATH for current session
-    export PATH="$HOME/.cargo/bin:$PATH"
 fi
+# uv installs to ~/.local/bin on newer versions, ~/.cargo/bin on older.
+# Cover both so re-runs and fresh installs both find the binary.
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 echo "  uv version: $(uv --version)"
 
 # ---------------------------------------------------------------------------
