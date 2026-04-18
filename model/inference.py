@@ -12,6 +12,7 @@ The engine:
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -29,6 +30,19 @@ logger = logging.getLogger(__name__)
 _DEFAULT_SYSTEM = (
     "You are PRISM, a persistent intelligent assistant. "
     "You learn from every conversation and grow over time."
+)
+
+# Qwen 32B occasionally emits '_' where an apostrophe belongs inside common
+# English contractions (< 1% of responses, mostly in meta-text about
+# grammar). Training data is clean — this is a generation-time artifact.
+# The allowed-words list keeps the fix from touching legitimate underscores
+# (e.g. Python identifiers like `variable_s`, `my_function_t`).
+_CONTRACTION_FIX = re.compile(
+    r"\b("
+    r"I|you|he|she|it|we|they|who|that|this|there|here|what|where|when|why|how|let|its"
+    r"|don|doesn|didn|won|wouldn|couldn|shouldn|isn|aren|wasn|weren|hasn|haven|hadn|mustn|needn|mightn"
+    r")_(t|s|d|m|ll|re|ve)\b",
+    flags=re.IGNORECASE,
 )
 
 
@@ -167,6 +181,8 @@ class PrismInferenceEngine:
         # Decode only the newly generated tokens
         new_tokens = output_ids[0][input_ids.shape[1]:]
         response = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+        response = _CONTRACTION_FIX.sub(r"\1'\2", response)
 
         # Update session memory if adapter ran
         if updated_memory_container[0] is not None:
